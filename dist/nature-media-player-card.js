@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.5";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.6";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -631,16 +631,42 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     `;
   }
 
-  _entityPicker(label, value) {
+  _entityPicker(label, value, index) {
+    const mediaPlayers = Object.keys(this._hass?.states || {})
+      .filter((entityId) => entityId.startsWith("media_player."))
+      .sort((a, b) => {
+        const aName = this._hass.states[a]?.attributes?.friendly_name || a;
+        const bName = this._hass.states[b]?.attributes?.friendly_name || b;
+        return aName.localeCompare(bName);
+      });
+
+    const selectedName = this._hass?.states?.[value]?.attributes?.friendly_name;
+    const displayValue = selectedName ? `${selectedName} (${value})` : value || "";
+
     return `
       <label>
         <span>${label}</span>
-        <ha-entity-picker
-          class="entity-picker"
-          value="${this._escape(value || "")}"
-          label="${this._escape(label)}"
-          allow-custom-entity
-        ></ha-entity-picker>
+        <div class="entity-combo" data-index="${index}">
+          <input
+            class="entity-input"
+            value="${this._escape(displayValue)}"
+            placeholder="Search media player"
+            autocomplete="off"
+          >
+          <div class="entity-options">
+            ${mediaPlayers
+              .map((entityId) => {
+                const name = this._hass.states[entityId]?.attributes?.friendly_name || entityId;
+                return `
+                  <button type="button" class="entity-option" data-entity="${this._escape(entityId)}">
+                    <span>${this._escape(name)}</span>
+                    <small>${this._escape(entityId)}</small>
+                  </button>
+                `;
+              })
+              .join("")}
+          </div>
+        </div>
       </label>
     `;
   }
@@ -721,7 +747,6 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
         input,
         select,
-        ha-entity-picker,
         ha-icon-picker {
           width: 100%;
           box-sizing: border-box;
@@ -735,6 +760,56 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           background: var(--card-background-color);
           color: var(--primary-text-color);
           font: inherit;
+        }
+
+        .entity-combo {
+          position: relative;
+        }
+
+        .entity-options {
+          position: absolute;
+          z-index: 10;
+          top: calc(100% + 4px);
+          left: 0;
+          right: 0;
+          max-height: 220px;
+          overflow-y: auto;
+          display: none;
+          border: 1px solid var(--divider-color);
+          border-radius: 8px;
+          background: var(--card-background-color);
+          box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,0.24));
+        }
+
+        .entity-combo.open .entity-options {
+          display: block;
+        }
+
+        .entity-option {
+          width: 100%;
+          display: grid;
+          gap: 2px;
+          padding: 9px 12px;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          color: var(--primary-text-color);
+          text-align: left;
+          font-weight: 500;
+        }
+
+        .entity-option:hover,
+        .entity-option:focus {
+          background: var(--secondary-background-color);
+        }
+
+        .entity-option small {
+          color: var(--secondary-text-color);
+          font-size: 11px;
+        }
+
+        .entity-option[hidden] {
+          display: none;
         }
 
         .player {
@@ -829,7 +904,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
                           </button>
                         </div>
                         <div class="grid">
-                          ${this._entityPicker("Entity", player.entity)}
+                          ${this._entityPicker("Entity", player.entity, index)}
                           ${this._input("Name (Optional)", player.name, "Uses the player name")}
                           ${this._iconPicker("Icon", player.icon)}
                         </div>
@@ -860,13 +935,28 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
     this.shadowRoot.querySelectorAll(".player").forEach((playerEl) => {
       const index = Number(playerEl.dataset.index);
-      const entityPicker = playerEl.querySelector(".entity-picker");
-      if (entityPicker) {
-        entityPicker.hass = this._hass;
-        entityPicker.includeDomains = ["media_player"];
-      }
-      entityPicker?.addEventListener("value-changed", (ev) => {
-        this._setPlayer(index, "entity", ev.detail?.value || "");
+      const combo = playerEl.querySelector(".entity-combo");
+      const entityInput = combo?.querySelector(".entity-input");
+      const entityOptions = combo?.querySelectorAll(".entity-option") || [];
+
+      entityInput?.addEventListener("focus", () => combo.classList.add("open"));
+      entityInput?.addEventListener("input", (ev) => {
+        const query = ev.target.value.toLowerCase();
+        combo.classList.add("open");
+        entityOptions.forEach((option) => {
+          option.hidden = !option.textContent.toLowerCase().includes(query);
+        });
+      });
+      entityInput?.addEventListener("change", (ev) => {
+        const value = ev.target.value.trim();
+        const directEntity = value.match(/(media_player\.[^) ]+)/)?.[1] || value;
+        this._setPlayer(index, "entity", directEntity);
+      });
+      entityOptions.forEach((option) => {
+        option.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          this._setPlayer(index, "entity", ev.currentTarget.dataset.entity);
+        });
       });
 
       const keys = ["name"];

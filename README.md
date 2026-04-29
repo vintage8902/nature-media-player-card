@@ -85,7 +85,7 @@ playback or changing track on another configured player will automatically move
 the card to that player.
 
 The card also includes a visual Lovelace editor for the common options:
-players, optional names, searchable entities and icons, empty title, and colors.
+players, optional names, searchable media players and icons, empty title, and colors.
 
 ## Colors
 
