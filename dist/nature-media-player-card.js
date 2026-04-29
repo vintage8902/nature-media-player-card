@@ -5,8 +5,6 @@ class NatureMediaPlayerCard extends HTMLElement {
 
   static getStubConfig() {
     return {
-      entity: "sensor.siste_aktive_mediaspiller",
-      selector: "input_select.valgt_mediaspiller",
       players: [
         { entity: "media_player.kjokken", name: "Kjokken", icon: "mdi:stove", option: "Kjokken" },
       ],
@@ -14,8 +12,8 @@ class NatureMediaPlayerCard extends HTMLElement {
   }
 
   setConfig(config) {
-    if (!config || !config.entity) {
-      throw new Error("You need to define an entity");
+    if (!config || (!config.entity && !Array.isArray(config.players))) {
+      throw new Error("You need to define either an entity or players");
     }
 
     this.config = {
@@ -37,16 +35,76 @@ class NatureMediaPlayerCard extends HTMLElement {
     return this._choicesOpen ? 4 : 3;
   }
 
-  _getActiveEntityId() {
-    const stateObj = this._hass?.states?.[this.config.entity];
-    if (!stateObj) return null;
+  _storageKey() {
+    const key = this.config.storage_key || this.config.entity || "default";
+    return `nature-media-player-card:${key}:active`;
+  }
 
-    if (stateObj.entity_id?.startsWith("media_player.")) {
+  _getStoredEntityId() {
+    try {
+      return window.localStorage.getItem(this._storageKey());
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  _storeEntityId(entityId) {
+    if (!entityId) return;
+    try {
+      window.localStorage.setItem(this._storageKey(), entityId);
+    } catch (_err) {
+      // localStorage can be unavailable in restricted browser modes.
+    }
+  }
+
+  _isUsableMediaState(stateObj) {
+    return stateObj && !["unknown", "unavailable", "off"].includes(stateObj.state);
+  }
+
+  _isActiveMediaState(stateObj) {
+    return stateObj && !["unknown", "unavailable", "off", "idle"].includes(stateObj.state);
+  }
+
+  _getConfiguredPlayerEntities() {
+    return this.config.players
+      .map((player) => player.entity)
+      .filter((entityId) => entityId && entityId.startsWith("media_player."));
+  }
+
+  _getLatestActivePlayerEntityId() {
+    const players = this._getConfiguredPlayerEntities()
+      .map((entityId) => this._hass?.states?.[entityId])
+      .filter((stateObj) => this._isActiveMediaState(stateObj));
+
+    players.sort((a, b) => new Date(b.last_changed).getTime() - new Date(a.last_changed).getTime());
+    return players[0]?.entity_id || null;
+  }
+
+  _getActiveEntityId() {
+    const stateObj = this.config.entity ? this._hass?.states?.[this.config.entity] : null;
+
+    if (stateObj?.entity_id?.startsWith("media_player.")) {
       return stateObj.entity_id;
     }
 
-    const active = stateObj.state;
-    return active && active.startsWith("media_player.") ? active : null;
+    const active = stateObj?.state;
+    if (active && active.startsWith("media_player.")) {
+      this._storeEntityId(active);
+      return active;
+    }
+
+    const latest = this._getLatestActivePlayerEntityId();
+    if (latest) {
+      this._storeEntityId(latest);
+      return latest;
+    }
+
+    const stored = this._getStoredEntityId();
+    if (stored && this._hass?.states?.[stored]) {
+      return stored;
+    }
+
+    return this._getConfiguredPlayerEntities()[0] || null;
   }
 
   _getActivePlayer() {
@@ -56,7 +114,7 @@ class NatureMediaPlayerCard extends HTMLElement {
   }
 
   _getDisplayData() {
-    const source = this._hass?.states?.[this.config.entity];
+    const source = this.config.entity ? this._hass?.states?.[this.config.entity] : null;
     const player = this._getActivePlayer();
     const activeEntity = this._getActiveEntityId();
     const configured = this.config.players.find((item) => item.entity === activeEntity) || {};
@@ -93,6 +151,10 @@ class NatureMediaPlayerCard extends HTMLElement {
   }
 
   _selectPlayer(player) {
+    if (player.entity) {
+      this._storeEntityId(player.entity);
+    }
+
     if (this.config.selector && player.option) {
       this._hass.callService(
         "input_select",
