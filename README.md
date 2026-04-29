@@ -2,6 +2,12 @@
 
 A nature-inspired Lovelace custom card for Home Assistant media players.
 
+## Preview
+
+![Nature Media Player controls](docs/images/player-controls.png)
+
+![Nature Media Player selection](docs/images/player-selection.png)
+
 ## Install locally
 
 Copy `dist/nature-media-player-card.js` to:
@@ -41,4 +47,3 @@ players:
 `entity` can be either a media player or a sensor whose state is the active media player entity id. If a sensor is used, the card reads `media_title`, `media_artist`, `player_state`, `volume_level`, and `icon` from its attributes.
 
 `selector` is optional. If provided, choosing a player will call `input_select.select_option`.
-
