@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.2";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.3";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -237,10 +237,13 @@ class NatureMediaPlayerCard extends HTMLElement {
     const choices = this.config.players
       .map((player) => {
         const selected = player.entity === data.activeEntity ? " selected" : "";
+        const playerState = this._hass?.states?.[player.entity];
+        const playerName =
+          player.name || player.option || playerState?.attributes?.friendly_name || player.entity;
         return `
           <button class="choice${selected}" data-player="${player.entity}">
             <span class="choice-icon"><ha-icon icon="${player.icon || "mdi:speaker"}"></ha-icon></span>
-            <span class="choice-name">${player.name || player.option || player.entity}</span>
+            <span class="choice-name">${playerName}</span>
           </button>
         `;
       })
