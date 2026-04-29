@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.6";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.7";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -754,12 +754,26 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
         input,
         select {
-          border: 1px solid var(--divider-color);
-          border-radius: 8px;
-          padding: 10px 12px;
-          background: var(--card-background-color);
+          min-height: 56px;
+          border: 0;
+          border-bottom: 1px solid var(--primary-color);
+          border-radius: 4px 4px 0 0;
+          padding: 18px 16px 6px;
+          background: var(--secondary-background-color, #303030);
           color: var(--primary-text-color);
           font: inherit;
+          outline: none;
+        }
+
+        input::placeholder {
+          color: var(--secondary-text-color);
+          opacity: 1;
+        }
+
+        input:focus,
+        select:focus {
+          border-bottom-color: var(--primary-color);
+          box-shadow: inset 0 -1px 0 var(--primary-color);
         }
 
         .entity-combo {
@@ -775,9 +789,9 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           max-height: 220px;
           overflow-y: auto;
           display: none;
-          border: 1px solid var(--divider-color);
-          border-radius: 8px;
-          background: var(--card-background-color);
+          border: 0;
+          border-radius: 0 0 4px 4px;
+          background: var(--secondary-background-color, #303030);
           box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,0.24));
         }
 
