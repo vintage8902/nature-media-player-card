@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.0";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.1";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -534,6 +534,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    if (this.config && !this._renderedWithHass) this._render();
   }
 
   setConfig(config) {
@@ -627,6 +628,39 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     `;
   }
 
+  _entitySelect(label, value) {
+    const mediaPlayers = Object.keys(this._hass?.states || {})
+      .filter((entityId) => entityId.startsWith("media_player."))
+      .sort((a, b) => {
+        const aName = this._hass.states[a]?.attributes?.friendly_name || a;
+        const bName = this._hass.states[b]?.attributes?.friendly_name || b;
+        return aName.localeCompare(bName);
+      });
+
+    const selectedMissing = value && !mediaPlayers.includes(value);
+
+    return `
+      <label>
+        <span>${label}</span>
+        <select>
+          <option value="">Select media player</option>
+          ${
+            selectedMissing
+              ? `<option value="${this._escape(value)}" selected>${this._escape(value)}</option>`
+              : ""
+          }
+          ${mediaPlayers
+            .map((entityId) => {
+              const name = this._hass.states[entityId]?.attributes?.friendly_name || entityId;
+              const selected = entityId === value ? " selected" : "";
+              return `<option value="${this._escape(entityId)}"${selected}>${this._escape(name)} (${this._escape(entityId)})</option>`;
+            })
+            .join("")}
+        </select>
+      </label>
+    `;
+  }
+
   _escape(value) {
     return String(value)
       .replaceAll("&", "&amp;")
@@ -637,6 +671,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
   _render() {
     if (!this.shadowRoot || !this.config) return;
+    if (this._hass) this._renderedWithHass = true;
 
     const players = this.config.players || [];
     const colors = this.config.colors || {};
@@ -687,7 +722,8 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           color: var(--secondary-text-color);
         }
 
-        input {
+        input,
+        select {
           width: 100%;
           box-sizing: border-box;
           border: 1px solid var(--divider-color);
@@ -758,9 +794,6 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       <div class="editor">
         <div class="section">
           <h3>General</h3>
-          ${this._input("Entity (optional sensor or media_player)", this.config.entity, "sensor.siste_aktive_mediaspiller")}
-          ${this._input("Selector (optional input_select)", this.config.selector, "input_select.valgt_mediaspiller")}
-          ${this._input("Storage key", this.config.storage_key, "living-room-card")}
           ${this._input("Empty title", this.config.empty_title, "Ingen media")}
         </div>
 
@@ -777,10 +810,9 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
                           <button class="ghost remove-player" data-index="${index}">Remove</button>
                         </div>
                         <div class="grid">
-                          ${this._input("Entity", player.entity, "media_player.kjokken")}
+                          ${this._entitySelect("Entity", player.entity)}
                           ${this._input("Name", player.name, "Kjokken")}
                           ${this._input("Icon", player.icon, "mdi:stove")}
-                          ${this._input("Selector option", player.option, "Kjøkken")}
                         </div>
                       </div>
                     `,
@@ -803,13 +835,17 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     `;
 
     const generalInputs = this.shadowRoot.querySelectorAll(".section:first-child input");
-    ["entity", "selector", "storage_key", "empty_title"].forEach((key, index) => {
+    ["empty_title"].forEach((key, index) => {
       generalInputs[index]?.addEventListener("change", (ev) => this._setValue(key, ev.target.value.trim()));
     });
 
     this.shadowRoot.querySelectorAll(".player").forEach((playerEl) => {
       const index = Number(playerEl.dataset.index);
-      const keys = ["entity", "name", "icon", "option"];
+      playerEl.querySelector("select")?.addEventListener("change", (ev) => {
+        this._setPlayer(index, "entity", ev.target.value.trim());
+      });
+
+      const keys = ["name", "icon"];
       playerEl.querySelectorAll("input").forEach((input, inputIndex) => {
         input.addEventListener("change", (ev) => this._setPlayer(index, keys[inputIndex], ev.target.value.trim()));
       });
