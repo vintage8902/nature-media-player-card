@@ -1,12 +1,27 @@
 # Nature Media Player Card
 
-A nature-inspired Lovelace custom card for Home Assistant media players.
+A compact, nature-inspired Lovelace custom card for Home Assistant media
+players. It lets you collect multiple media players in one card, automatically
+follow the latest active player, and quickly switch between players with the
+three-dot button.
 
 ## Preview
 
-![Nature Media Player controls](docs/images/player-controls.png)
+<p align="center">
+  <img src="docs/images/player-controls.png" alt="Media player with info, controls and volume adjustment">
+</p>
 
-![Nature Media Player selection](docs/images/player-selection.png)
+<p align="center">
+  <em>Media player with info, controls and volume adjustment.</em>
+</p>
+
+<p align="center">
+  <img src="docs/images/player-selection.png" alt="Switch between players">
+</p>
+
+<p align="center">
+  <em>Switch between players.</em>
+</p>
 
 ## Install With HACS
 
