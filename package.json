@@ -1,0 +1,23 @@
+{
+  "name": "nature-media-player-card",
+  "version": "0.1.0",
+  "description": "Nature-inspired dynamic media player Lovelace card for Home Assistant.",
+  "type": "module",
+  "files": [
+    "dist",
+    "hacs.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "check": "node --check dist/nature-media-player-card.js"
+  },
+  "keywords": [
+    "home-assistant",
+    "lovelace",
+    "custom-card",
+    "hacs",
+    "media-player"
+  ],
+  "license": "MIT"
+}
