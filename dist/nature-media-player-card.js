@@ -1,3 +1,11 @@
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.2.0";
+
+console.info(
+  `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
+  "color: #EAD8B5; background: #1E3A2F; font-weight: 700;",
+  "color: #1E3A2F; background: #A8C49A; font-weight: 700;",
+);
+
 class NatureMediaPlayerCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("nature-media-player-card-editor");
