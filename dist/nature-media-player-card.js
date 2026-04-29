@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.2.0";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.2.1";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -48,6 +48,11 @@ class NatureMediaPlayerCard extends HTMLElement {
     return `nature-media-player-card:${key}:active`;
   }
 
+  _storageTimeKey() {
+    const key = this.config.storage_key || this.config.entity || "default";
+    return `nature-media-player-card:${key}:active-time`;
+  }
+
   _getStoredEntityId() {
     try {
       return window.localStorage.getItem(this._storageKey());
@@ -56,10 +61,19 @@ class NatureMediaPlayerCard extends HTMLElement {
     }
   }
 
+  _getStoredTime() {
+    try {
+      return Number(window.localStorage.getItem(this._storageTimeKey()) || 0);
+    } catch (_err) {
+      return 0;
+    }
+  }
+
   _storeEntityId(entityId) {
     if (!entityId) return;
     try {
       window.localStorage.setItem(this._storageKey(), entityId);
+      window.localStorage.setItem(this._storageTimeKey(), String(Date.now()));
     } catch (_err) {
       // localStorage can be unavailable in restricted browser modes.
     }
@@ -101,15 +115,25 @@ class NatureMediaPlayerCard extends HTMLElement {
       return active;
     }
 
-    const latest = this._getLatestActivePlayerEntityId();
-    if (latest) {
+    const stored = this._getStoredEntityId();
+    if (stored && this._hass?.states?.[stored]) {
+      const latest = this._getLatestActivePlayerEntityId();
+      const latestChanged = latest
+        ? new Date(this._hass.states[latest].last_changed).getTime()
+        : 0;
+
+      if (!latest || this._getStoredTime() >= latestChanged) {
+        return stored;
+      }
+
       this._storeEntityId(latest);
       return latest;
     }
 
-    const stored = this._getStoredEntityId();
-    if (stored && this._hass?.states?.[stored]) {
-      return stored;
+    const latest = this._getLatestActivePlayerEntityId();
+    if (latest) {
+      this._storeEntityId(latest);
+      return latest;
     }
 
     return this._getConfiguredPlayerEntities()[0] || null;
