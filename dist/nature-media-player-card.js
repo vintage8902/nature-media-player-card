@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.7";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.8";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -549,15 +549,31 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     this._render();
   }
 
+  _orderedConfig(config) {
+    const { type, players, colors, ...rest } = config;
+    const ordered = {
+      type: type || "custom:nature-media-player-card",
+      players: Array.isArray(players) ? players : [],
+    };
+
+    Object.entries(rest).forEach(([key, value]) => {
+      if (value !== undefined) ordered[key] = value;
+    });
+
+    ordered.colors = colors || {};
+    return ordered;
+  }
+
   _defaultPlayerEntity() {
     return Object.keys(this._hass?.states || {}).find((entityId) => entityId.startsWith("media_player.")) || "";
   }
 
   _fireConfigChanged(config) {
-    this.config = config;
+    const orderedConfig = this._orderedConfig(config);
+    this.config = orderedConfig;
     this.dispatchEvent(
       new CustomEvent("config-changed", {
-        detail: { config },
+        detail: { config: orderedConfig },
         bubbles: true,
         composed: true,
       }),
