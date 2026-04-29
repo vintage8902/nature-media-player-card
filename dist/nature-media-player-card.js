@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.3.0";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.0";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -527,13 +527,303 @@ window.customCards.push({
 });
 
 class NatureMediaPlayerCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+  }
+
   setConfig(config) {
+    this.config = {
+      players: [],
+      colors: {},
+      ...config,
+    };
+    this._render();
+  }
+
+  _defaultPlayerEntity() {
+    return Object.keys(this._hass?.states || {}).find((entityId) => entityId.startsWith("media_player.")) || "";
+  }
+
+  _fireConfigChanged(config) {
     this.config = config;
-    this.innerHTML = `
-      <div style="padding: 16px;">
-        Configure this card in YAML.
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: { config },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    this._render();
+  }
+
+  _setValue(key, value) {
+    const config = { ...this.config };
+    if (value === "" || value === null || value === undefined) {
+      delete config[key];
+    } else {
+      config[key] = value;
+    }
+    this._fireConfigChanged(config);
+  }
+
+  _setColor(key, value) {
+    const colors = { ...(this.config.colors || {}) };
+    if (value === "" || value === null || value === undefined) {
+      delete colors[key];
+    } else {
+      colors[key] = value;
+    }
+
+    const config = { ...this.config };
+    if (Object.keys(colors).length) {
+      config.colors = colors;
+    } else {
+      delete config.colors;
+    }
+
+    this._fireConfigChanged(config);
+  }
+
+  _setPlayer(index, key, value) {
+    const players = [...(this.config.players || [])];
+    players[index] = { ...(players[index] || {}) };
+
+    if (value === "" || value === null || value === undefined) {
+      delete players[index][key];
+    } else {
+      players[index][key] = value;
+    }
+
+    this._fireConfigChanged({ ...this.config, players });
+  }
+
+  _addPlayer() {
+    const players = [...(this.config.players || [])];
+    players.push({
+      entity: this._defaultPlayerEntity(),
+      name: "",
+      icon: "mdi:speaker",
+    });
+    this._fireConfigChanged({ ...this.config, players });
+  }
+
+  _removePlayer(index) {
+    const players = [...(this.config.players || [])];
+    players.splice(index, 1);
+    this._fireConfigChanged({ ...this.config, players });
+  }
+
+  _input(label, value, placeholder, onChange) {
+    return `
+      <label>
+        <span>${label}</span>
+        <input value="${this._escape(value || "")}" placeholder="${this._escape(placeholder || "")}">
+      </label>
+    `;
+  }
+
+  _escape(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
+  _render() {
+    if (!this.shadowRoot || !this.config) return;
+
+    const players = this.config.players || [];
+    const colors = this.config.colors || {};
+    const colorFields = [
+      ["surface", "Surface"],
+      ["border", "Border"],
+      ["accent", "Accent"],
+      ["light", "Light"],
+      ["text", "Text"],
+      ["muted", "Muted text"],
+      ["icon_background", "Icon background"],
+      ["choice_background", "Choice background"],
+      ["active_background", "Active background"],
+      ["active_border", "Active border"],
+      ["active_text", "Active text"],
+      ["shadow", "Shadow"],
+      ["active_glow", "Active glow"],
+    ];
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host {
+          display: block;
+          color: var(--primary-text-color);
+        }
+
+        .editor {
+          display: grid;
+          gap: 18px;
+          padding: 16px;
+        }
+
+        .section {
+          display: grid;
+          gap: 12px;
+        }
+
+        h3 {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 600;
+        }
+
+        label {
+          display: grid;
+          gap: 6px;
+          font-size: 12px;
+          color: var(--secondary-text-color);
+        }
+
+        input {
+          width: 100%;
+          box-sizing: border-box;
+          border: 1px solid var(--divider-color);
+          border-radius: 8px;
+          padding: 10px 12px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+          font: inherit;
+        }
+
+        .player {
+          display: grid;
+          gap: 10px;
+          padding: 12px;
+          border: 1px solid var(--divider-color);
+          border-radius: 12px;
+        }
+
+        .player-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          font-weight: 600;
+        }
+
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        button {
+          border: 0;
+          border-radius: 10px;
+          padding: 10px 12px;
+          background: var(--primary-color);
+          color: var(--text-primary-color);
+          font: inherit;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .ghost {
+          background: transparent;
+          color: var(--error-color);
+          padding: 6px 0;
+        }
+
+        details {
+          border: 1px solid var(--divider-color);
+          border-radius: 12px;
+          padding: 12px;
+        }
+
+        summary {
+          cursor: pointer;
+          font-weight: 600;
+        }
+
+        .colors {
+          display: grid;
+          gap: 10px;
+          margin-top: 12px;
+        }
+      </style>
+
+      <div class="editor">
+        <div class="section">
+          <h3>General</h3>
+          ${this._input("Entity (optional sensor or media_player)", this.config.entity, "sensor.siste_aktive_mediaspiller")}
+          ${this._input("Selector (optional input_select)", this.config.selector, "input_select.valgt_mediaspiller")}
+          ${this._input("Storage key", this.config.storage_key, "living-room-card")}
+          ${this._input("Empty title", this.config.empty_title, "Ingen media")}
+        </div>
+
+        <div class="section">
+          <h3>Players</h3>
+          ${
+            players.length
+              ? players
+                  .map(
+                    (player, index) => `
+                      <div class="player" data-index="${index}">
+                        <div class="player-head">
+                          <span>Player ${index + 1}</span>
+                          <button class="ghost remove-player" data-index="${index}">Remove</button>
+                        </div>
+                        <div class="grid">
+                          ${this._input("Entity", player.entity, "media_player.kjokken")}
+                          ${this._input("Name", player.name, "Kjokken")}
+                          ${this._input("Icon", player.icon, "mdi:stove")}
+                          ${this._input("Selector option", player.option, "Kjøkken")}
+                        </div>
+                      </div>
+                    `,
+                  )
+                  .join("")
+              : `<p>No players yet.</p>`
+          }
+          <button class="add-player">Add Player</button>
+        </div>
+
+        <details>
+          <summary>Colors</summary>
+          <div class="colors">
+            ${colorFields
+              .map(([key, label]) => this._input(label, colors[key], key === "accent" ? "#A8C49A" : ""))
+              .join("")}
+          </div>
+        </details>
       </div>
     `;
+
+    const generalInputs = this.shadowRoot.querySelectorAll(".section:first-child input");
+    ["entity", "selector", "storage_key", "empty_title"].forEach((key, index) => {
+      generalInputs[index]?.addEventListener("change", (ev) => this._setValue(key, ev.target.value.trim()));
+    });
+
+    this.shadowRoot.querySelectorAll(".player").forEach((playerEl) => {
+      const index = Number(playerEl.dataset.index);
+      const keys = ["entity", "name", "icon", "option"];
+      playerEl.querySelectorAll("input").forEach((input, inputIndex) => {
+        input.addEventListener("change", (ev) => this._setPlayer(index, keys[inputIndex], ev.target.value.trim()));
+      });
+    });
+
+    this.shadowRoot.querySelectorAll(".remove-player").forEach((button) => {
+      button.addEventListener("click", (ev) => this._removePlayer(Number(ev.currentTarget.dataset.index)));
+    });
+
+    this.shadowRoot.querySelector(".add-player")?.addEventListener("click", () => this._addPlayer());
+
+    this.shadowRoot.querySelectorAll(".colors input").forEach((input, index) => {
+      input.addEventListener("change", (ev) => this._setColor(colorFields[index][0], ev.target.value.trim()));
+    });
   }
 }
 

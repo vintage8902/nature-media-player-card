@@ -84,6 +84,9 @@ Tap the three-dot button on the card to manually choose a player. Starting
 playback or changing track on another configured player will automatically move
 the card to that player.
 
+The card also includes a visual Lovelace editor, so the same options can be
+configured from the Home Assistant UI.
+
 ## Colors
 
 The default colors match the nature-inspired green/cream style, but every main
