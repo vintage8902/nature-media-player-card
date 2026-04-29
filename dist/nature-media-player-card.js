@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.2.1";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.2.2";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -98,8 +98,13 @@ class NatureMediaPlayerCard extends HTMLElement {
       .map((entityId) => this._hass?.states?.[entityId])
       .filter((stateObj) => this._isActiveMediaState(stateObj));
 
-    players.sort((a, b) => new Date(b.last_changed).getTime() - new Date(a.last_changed).getTime());
+    players.sort((a, b) => this._getStateUpdatedTime(b) - this._getStateUpdatedTime(a));
     return players[0]?.entity_id || null;
+  }
+
+  _getStateUpdatedTime(stateObj) {
+    if (!stateObj) return 0;
+    return new Date(stateObj.last_updated || stateObj.last_changed).getTime();
   }
 
   _getActiveEntityId() {
@@ -119,7 +124,7 @@ class NatureMediaPlayerCard extends HTMLElement {
     if (stored && this._hass?.states?.[stored]) {
       const latest = this._getLatestActivePlayerEntityId();
       const latestChanged = latest
-        ? new Date(this._hass.states[latest].last_changed).getTime()
+        ? this._getStateUpdatedTime(this._hass.states[latest])
         : 0;
 
       if (!latest || this._getStoredTime() >= latestChanged) {
