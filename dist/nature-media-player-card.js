@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.1";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.2";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -750,6 +750,21 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           font-weight: 600;
         }
 
+        .icon-button {
+          width: 36px;
+          height: 36px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          padding: 0;
+        }
+
+        .icon-button ha-icon {
+          width: 20px;
+          height: 20px;
+        }
+
         .grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -770,7 +785,6 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         .ghost {
           background: transparent;
           color: var(--error-color);
-          padding: 6px 0;
         }
 
         details {
@@ -807,11 +821,13 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
                       <div class="player" data-index="${index}">
                         <div class="player-head">
                           <span>Player ${index + 1}</span>
-                          <button class="ghost remove-player" data-index="${index}">Remove</button>
+                          <button class="ghost icon-button remove-player" data-index="${index}" aria-label="Remove player">
+                            <ha-icon icon="mdi:trash-can-outline"></ha-icon>
+                          </button>
                         </div>
                         <div class="grid">
                           ${this._entitySelect("Entity", player.entity)}
-                          ${this._input("Name", player.name, "Kjokken")}
+                          ${this._input("Name (Optional)", player.name, "Uses the player name")}
                           ${this._input("Icon", player.icon, "mdi:stove")}
                         </div>
                       </div>
