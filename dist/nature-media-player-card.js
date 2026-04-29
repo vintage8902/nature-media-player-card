@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.3";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.4";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -664,6 +664,19 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     `;
   }
 
+  _iconPicker(label, value) {
+    return `
+      <label>
+        <span>${label}</span>
+        <ha-icon-picker
+          class="icon-picker"
+          value="${this._escape(value || "")}"
+          label="${this._escape(label)}"
+        ></ha-icon-picker>
+      </label>
+    `;
+  }
+
   _escape(value) {
     return String(value)
       .replaceAll("&", "&amp;")
@@ -726,9 +739,14 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         }
 
         input,
-        select {
+        select,
+        ha-icon-picker {
           width: 100%;
           box-sizing: border-box;
+        }
+
+        input,
+        select {
           border: 1px solid var(--divider-color);
           border-radius: 8px;
           padding: 10px 12px;
@@ -831,7 +849,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
                         <div class="grid">
                           ${this._entitySelect("Entity", player.entity)}
                           ${this._input("Name (Optional)", player.name, "Uses the player name")}
-                          ${this._input("Icon", player.icon, "mdi:stove")}
+                          ${this._iconPicker("Icon", player.icon)}
                         </div>
                       </div>
                     `,
@@ -864,9 +882,13 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         this._setPlayer(index, "entity", ev.target.value.trim());
       });
 
-      const keys = ["name", "icon"];
+      const keys = ["name"];
       playerEl.querySelectorAll("input").forEach((input, inputIndex) => {
         input.addEventListener("change", (ev) => this._setPlayer(index, keys[inputIndex], ev.target.value.trim()));
+      });
+
+      playerEl.querySelector(".icon-picker")?.addEventListener("value-changed", (ev) => {
+        this._setPlayer(index, "icon", ev.detail?.value || "");
       });
     });
 
