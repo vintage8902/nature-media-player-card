@@ -83,3 +83,30 @@ players:
 Tap the three-dot button on the card to manually choose a player. Starting
 playback or changing track on another configured player will automatically move
 the card to that player.
+
+## Colors
+
+The default colors match the nature-inspired green/cream style, but every main
+color can be adjusted from YAML:
+
+```yaml
+type: custom:nature-media-player-card
+colors:
+  surface: rgba(60, 94, 74, 0.72)
+  border: rgba(168, 196, 154, 0.13)
+  accent: "#A8C49A"
+  light: "#E9F1E8"
+  text: "#EAD8B5"
+  muted: rgba(234, 216, 181, 0.72)
+  icon_background: rgba(168, 196, 154, 0.16)
+  choice_background: linear-gradient(145deg, rgba(168,196,154,0.22), rgba(46,79,61,0.58))
+  active_background: linear-gradient(145deg, rgba(168,196,154,0.45), rgba(233,241,232,0.18))
+  active_border: rgba(233, 241, 232, 0.32)
+  active_text: "#F4F7F1"
+players:
+  - entity: media_player.kjokken
+    name: Kjokken
+    icon: mdi:stove
+```
+
+Optional advanced values are `shadow` and `active_glow`.

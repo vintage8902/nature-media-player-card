@@ -1,6 +1,6 @@
 {
   "name": "nature-media-player-card",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Nature-inspired dynamic media player Lovelace card for Home Assistant.",
   "type": "module",
   "files": [

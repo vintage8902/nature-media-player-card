@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.2.2";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.3.0";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -218,6 +218,22 @@ class NatureMediaPlayerCard extends HTMLElement {
     const data = this._getDisplayData();
     const playing = data.state === "playing";
     const volumePct = Math.round(Math.max(0, Math.min(1, data.volume)) * 100);
+    const colors = {
+      surface: "rgba(60, 94, 74, 0.72)",
+      border: "rgba(168, 196, 154, 0.13)",
+      accent: "#A8C49A",
+      light: "#E9F1E8",
+      text: "#EAD8B5",
+      muted: "rgba(234, 216, 181, 0.72)",
+      icon_background: "rgba(168, 196, 154, 0.16)",
+      choice_background: "linear-gradient(145deg, rgba(168,196,154,0.22), rgba(46,79,61,0.58))",
+      active_background: "linear-gradient(145deg, rgba(168,196,154,0.45), rgba(233,241,232,0.18))",
+      active_border: "rgba(233, 241, 232, 0.32)",
+      active_text: "#F4F7F1",
+      shadow: "0 10px 24px rgba(0,0,0,0.16)",
+      active_glow: "0 0 16px rgba(233, 241, 232, 0.18)",
+      ...this.config.colors,
+    };
     const choices = this.config.players
       .map((player) => {
         const selected = player.entity === data.activeEntity ? " selected" : "";
@@ -235,12 +251,19 @@ class NatureMediaPlayerCard extends HTMLElement {
         :host {
           display: block;
           --nmp-primary: var(--primary-color, #1E3A2F);
-          --nmp-surface: rgba(60, 94, 74, 0.72);
-          --nmp-border: rgba(168, 196, 154, 0.13);
-          --nmp-accent: #A8C49A;
-          --nmp-light: #E9F1E8;
-          --nmp-text: #EAD8B5;
-          --nmp-muted: rgba(234, 216, 181, 0.72);
+          --nmp-surface: ${colors.surface};
+          --nmp-border: ${colors.border};
+          --nmp-accent: ${colors.accent};
+          --nmp-light: ${colors.light};
+          --nmp-text: ${colors.text};
+          --nmp-muted: ${colors.muted};
+          --nmp-icon-background: ${colors.icon_background};
+          --nmp-choice-background: ${colors.choice_background};
+          --nmp-active-background: ${colors.active_background};
+          --nmp-active-border: ${colors.active_border};
+          --nmp-active-text: ${colors.active_text};
+          --nmp-shadow: ${colors.shadow};
+          --nmp-active-glow: ${colors.active_glow};
         }
 
         ha-card {
@@ -250,7 +273,7 @@ class NatureMediaPlayerCard extends HTMLElement {
           border-radius: 26px;
           box-shadow:
             inset 0 1px 0 rgba(255,255,255,0.05),
-            0 10px 24px rgba(0,0,0,0.16);
+            var(--nmp-shadow);
           overflow: hidden;
           box-sizing: border-box;
         }
@@ -271,7 +294,7 @@ class NatureMediaPlayerCard extends HTMLElement {
           height: 43px;
           border-radius: 50%;
           color: var(--nmp-text);
-          background: rgba(168,196,154,0.16);
+          background: var(--nmp-icon-background);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -349,10 +372,10 @@ class NatureMediaPlayerCard extends HTMLElement {
         .play {
           width: 56px;
           height: 56px;
-          color: #F4F7F1;
-          background: linear-gradient(145deg, rgba(168,196,154,0.45), rgba(233,241,232,0.18));
-          border: 1px solid rgba(233, 241, 232, 0.32);
-          box-shadow: 0 0 16px rgba(233, 241, 232, 0.18);
+          color: var(--nmp-active-text);
+          background: var(--nmp-active-background);
+          border: 1px solid var(--nmp-active-border);
+          box-shadow: var(--nmp-active-glow);
         }
 
         .volume {
@@ -402,7 +425,7 @@ class NatureMediaPlayerCard extends HTMLElement {
           width: 54px;
           height: 54px;
           border-radius: 50%;
-          background: linear-gradient(145deg, rgba(168,196,154,0.22), rgba(46,79,61,0.58));
+          background: var(--nmp-choice-background);
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 18px rgba(0,0,0,0.16);
           display: flex;
           align-items: center;
@@ -411,8 +434,8 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         .choice.selected .choice-icon {
-          background: linear-gradient(145deg, rgba(168,196,154,0.45), rgba(233,241,232,0.18));
-          border: 1px solid rgba(233,241,232,0.32);
+          background: var(--nmp-active-background);
+          border: 1px solid var(--nmp-active-border);
         }
 
         .choice-icon ha-icon {
