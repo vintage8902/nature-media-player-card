@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.12";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.13";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -40,7 +40,9 @@ class NatureMediaPlayerCard extends HTMLElement {
   }
 
   getCardSize() {
-    return this._choicesOpen ? 4 : 3;
+    if (!this._choicesOpen) return 3;
+    const players = this.config?.players?.length || 1;
+    return 3 + Math.max(1, Math.ceil(players / 4));
   }
 
   _storageKey() {
@@ -219,6 +221,11 @@ class NatureMediaPlayerCard extends HTMLElement {
     const playing = data.state === "playing";
     const volumePct = Math.round(Math.max(0, Math.min(1, data.volume)) * 100);
     const titleIsLong = String(data.title || "").length > 40;
+    const choiceColumns = Math.min(Math.max(this.config.players.length || 1, 1), 4);
+    const choiceRows = Math.max(1, Math.ceil((this.config.players.length || 1) / choiceColumns));
+    const extraChoiceHeight = Math.max(0, choiceRows - 1) * 82;
+    const cardHeight = this._choicesOpen ? 195 + extraChoiceHeight : 195;
+    const choicesHeight = 106 + extraChoiceHeight;
     const colors = {
       surface: "rgba(60, 94, 74, 0.72)",
       border: "rgba(168, 196, 154, 0.13)",
@@ -280,7 +287,7 @@ class NatureMediaPlayerCard extends HTMLElement {
           width: 100%;
           max-width: 100%;
           min-width: 0;
-          height: ${this._choicesOpen ? "195px" : "195px"};
+          height: ${cardHeight}px;
           background: var(--nmp-surface);
           border: 1px solid var(--nmp-border);
           border-radius: 26px;
@@ -484,11 +491,12 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         .choices {
-          height: 106px;
+          height: ${choicesHeight}px;
           padding: 12px 8px 0;
           box-sizing: border-box;
           display: grid;
-          grid-template-columns: repeat(${Math.min(Math.max(this.config.players.length || 1, 1), 4)}, 1fr);
+          grid-template-columns: repeat(${choiceColumns}, 1fr);
+          grid-auto-rows: 76px;
           gap: 6px;
         }
 
