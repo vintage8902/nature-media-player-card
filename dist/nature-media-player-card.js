@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.17";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.18";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -169,7 +169,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       state: attrs.player_state || player?.state || "off",
       volume: Number(attrs.volume_level ?? playerAttrs.volume_level ?? 0),
       muted: Boolean(attrs.is_volume_muted ?? playerAttrs.is_volume_muted ?? false),
-      icon: attrs.icon || configured.icon || this.config.icon || "mdi:speaker",
+      icon: configured.icon || attrs.icon || this.config.icon || "mdi:speaker",
       name: configured.name || playerAttrs.friendly_name || activeEntity || "Mediaspiller",
     };
   }
