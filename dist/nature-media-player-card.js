@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.16";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.17";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -168,6 +168,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       artist: attrs.media_artist || playerAttrs.media_artist || "",
       state: attrs.player_state || player?.state || "off",
       volume: Number(attrs.volume_level ?? playerAttrs.volume_level ?? 0),
+      muted: Boolean(attrs.is_volume_muted ?? playerAttrs.is_volume_muted ?? false),
       icon: attrs.icon || configured.icon || this.config.icon || "mdi:speaker",
       name: configured.name || playerAttrs.friendly_name || activeEntity || "Mediaspiller",
     };
@@ -186,6 +187,17 @@ class NatureMediaPlayerCard extends HTMLElement {
       "media_player",
       "volume_set",
       { volume_level: Number(value) },
+      { entity_id: entityId },
+    );
+  }
+
+  _toggleMute(currentMuted) {
+    const entityId = this._getActiveEntityId();
+    if (!entityId) return;
+    this._hass.callService(
+      "media_player",
+      "volume_mute",
+      { is_volume_muted: !currentMuted },
       { entity_id: entityId },
     );
   }
@@ -222,6 +234,7 @@ class NatureMediaPlayerCard extends HTMLElement {
     const playing = data.state === "playing";
     const showVolume = this.config.show_volume !== false;
     const volumePct = Math.round(Math.max(0, Math.min(1, data.volume)) * 100);
+    const volumeIcon = data.muted ? "mdi:volume-off" : "mdi:volume-high";
     const titleIsLong = String(data.title || "").length > 40;
     const choiceColumns = Math.min(Math.max(this.config.players.length || 1, 1), 4);
     const choiceRows = Math.max(1, Math.ceil((this.config.players.length || 1) / choiceColumns));
@@ -485,7 +498,21 @@ class NatureMediaPlayerCard extends HTMLElement {
           min-width: 0;
         }
 
-        .volume ha-icon {
+        .volume-button {
+          width: 28px;
+          height: 28px;
+          border: 0;
+          padding: 0;
+          border-radius: 50%;
+          color: var(--nmp-text);
+          background: transparent;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+
+        .volume-button ha-icon {
           width: 20px;
           height: 20px;
         }
@@ -603,7 +630,9 @@ class NatureMediaPlayerCard extends HTMLElement {
                 showVolume
                   ? `
                     <div class="volume">
-                      <ha-icon icon="mdi:volume-high"></ha-icon>
+                      <button class="volume-button" aria-label="${data.muted ? "Unmute" : "Mute"}">
+                        <ha-icon icon="${volumeIcon}"></ha-icon>
+                      </button>
                       <input class="volume-slider" type="range" min="0" max="100" value="${volumePct}" />
                     </div>
                   `
@@ -638,6 +667,11 @@ class NatureMediaPlayerCard extends HTMLElement {
     this.shadowRoot.querySelector(".volume-slider")?.addEventListener("change", (ev) => {
       ev.stopPropagation();
       this._setVolume(Number(ev.target.value) / 100);
+    });
+
+    this.shadowRoot.querySelector(".volume-button")?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      this._toggleMute(data.muted);
     });
 
     this.shadowRoot.querySelectorAll(".choice").forEach((button) => {

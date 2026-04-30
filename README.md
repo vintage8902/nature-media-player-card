@@ -91,7 +91,8 @@ players:
 ```
 
 `show_volume` is optional and defaults to `true`. Set it to `false` if you want
-to hide the volume slider and use a shorter compact control layout.
+to hide the volume slider and use a shorter compact control layout. When volume
+is shown, tap the volume icon to mute or unmute the active player.
 
 ## Colors
 
