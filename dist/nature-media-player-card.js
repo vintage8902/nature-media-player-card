@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.9";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.10";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -254,6 +254,10 @@ class NatureMediaPlayerCard extends HTMLElement {
       <style>
         :host {
           display: block;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          overflow: hidden;
           --nmp-primary: var(--primary-color, #1E3A2F);
           --nmp-surface: ${colors.surface};
           --nmp-border: ${colors.border};
@@ -271,6 +275,9 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         ha-card {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
           height: ${this._choicesOpen ? "195px" : "195px"};
           background: var(--nmp-surface);
           border: 1px solid var(--nmp-border);
@@ -288,6 +295,8 @@ class NatureMediaPlayerCard extends HTMLElement {
           padding: 18px 56px 8px;
           box-sizing: border-box;
           text-align: center;
+          width: 100%;
+          max-width: 100%;
           min-width: 0;
           overflow: hidden;
         }
@@ -331,9 +340,11 @@ class NatureMediaPlayerCard extends HTMLElement {
 
         .title {
           display: block;
+          position: relative;
           width: 100%;
           max-width: 100%;
           min-width: 0;
+          height: 20px;
           color: var(--nmp-text);
           font-size: 16px;
           font-weight: 700;
@@ -343,27 +354,44 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         .title span {
-          display: inline-block;
+          display: block;
+          width: 100%;
           max-width: 100%;
           overflow: hidden;
           text-overflow: ellipsis;
-          vertical-align: top;
+          white-space: nowrap;
         }
 
         .title.scrolling span {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: max-content;
+          min-width: 0;
           max-width: none;
-          min-width: 100%;
-          padding-left: 100%;
+          overflow: visible;
           text-overflow: clip;
-          animation: nmp-title-marquee 14s linear infinite;
+          animation: nmp-title-marquee var(--nmp-title-duration, 14s) ease-in-out infinite;
+          will-change: transform;
         }
 
         @keyframes nmp-title-marquee {
-          0%, 12% {
+          0%, 15% {
             transform: translateX(0);
           }
-          88%, 100% {
-            transform: translateX(calc(-100% - 100%));
+          85%, 100% {
+            transform: translateX(calc(-1 * var(--nmp-title-distance, 0px)));
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .title.scrolling span {
+            position: static;
+            width: 100%;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            animation: none;
           }
         }
 
@@ -425,6 +453,9 @@ class NatureMediaPlayerCard extends HTMLElement {
           gap: 12px;
           align-items: center;
           color: var(--nmp-text);
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
         }
 
         .volume ha-icon {
@@ -434,6 +465,7 @@ class NatureMediaPlayerCard extends HTMLElement {
 
         input[type="range"] {
           width: 100%;
+          min-width: 0;
           accent-color: var(--nmp-accent);
         }
 
@@ -552,6 +584,17 @@ class NatureMediaPlayerCard extends HTMLElement {
         if (player) this._selectPlayer(player);
       });
     });
+
+    const title = this.shadowRoot.querySelector(".title.scrolling");
+    const titleText = title?.querySelector("span");
+    if (title && titleText) {
+      requestAnimationFrame(() => {
+        const distance = Math.max(0, titleText.scrollWidth - title.clientWidth);
+        title.style.setProperty("--nmp-title-distance", `${distance}px`);
+        title.style.setProperty("--nmp-title-duration", `${Math.max(12, Math.min(24, distance / 14))}s`);
+        title.classList.toggle("scrolling", distance > 2);
+      });
+    }
   }
 }
 
