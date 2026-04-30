@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.11";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.12";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -302,7 +302,7 @@ class NatureMediaPlayerCard extends HTMLElement {
         .header {
           position: relative;
           height: 62px;
-          padding: 18px 56px 8px;
+          padding: 18px 76px 8px;
           box-sizing: border-box;
           text-align: center;
           width: 100%;

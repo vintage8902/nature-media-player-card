@@ -8,19 +8,11 @@ three-dot button.
 ## Preview
 
 <p align="center">
-  <img src="docs/images/player-controls.png" alt="Media player with info, controls and volume adjustment">
+  <img src="docs/images/cover.jpg" alt="Nature Media Player Card preview">
 </p>
 
 <p align="center">
-  <em>Media player with info, controls and volume adjustment.</em>
-</p>
-
-<p align="center">
-  <img src="docs/images/player-selection.png" alt="Switch between players">
-</p>
-
-<p align="center">
-  <em>Switch between players.</em>
+  <em>A compact multi-speaker media card with playback controls, volume adjustment and quick player switching.</em>
 </p>
 
 ## Install With HACS
