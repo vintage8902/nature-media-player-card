@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.8";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.9";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -218,6 +218,7 @@ class NatureMediaPlayerCard extends HTMLElement {
     const data = this._getDisplayData();
     const playing = data.state === "playing";
     const volumePct = Math.round(Math.max(0, Math.min(1, data.volume)) * 100);
+    const titleIsLong = String(data.title || "").length > 40;
     const colors = {
       surface: "rgba(60, 94, 74, 0.72)",
       border: "rgba(168, 196, 154, 0.13)",
@@ -287,6 +288,8 @@ class NatureMediaPlayerCard extends HTMLElement {
           padding: 18px 56px 8px;
           box-sizing: border-box;
           text-align: center;
+          min-width: 0;
+          overflow: hidden;
         }
 
         .source {
@@ -327,16 +330,48 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         .title {
+          display: block;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
           color: var(--nmp-text);
           font-size: 16px;
           font-weight: 700;
           line-height: 20px;
           white-space: nowrap;
           overflow: hidden;
+        }
+
+        .title span {
+          display: inline-block;
+          max-width: 100%;
+          overflow: hidden;
           text-overflow: ellipsis;
+          vertical-align: top;
+        }
+
+        .title.scrolling span {
+          max-width: none;
+          min-width: 100%;
+          padding-left: 100%;
+          text-overflow: clip;
+          animation: nmp-title-marquee 14s linear infinite;
+        }
+
+        @keyframes nmp-title-marquee {
+          0%, 12% {
+            transform: translateX(0);
+          }
+          88%, 100% {
+            transform: translateX(calc(-100% - 100%));
+          }
         }
 
         .artist {
+          display: block;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
           color: var(--nmp-muted);
           font-size: 12px;
           font-weight: 600;
@@ -461,7 +496,7 @@ class NatureMediaPlayerCard extends HTMLElement {
         <div class="header">
           <div class="source"><ha-icon icon="${data.icon}"></ha-icon></div>
           <button class="menu" aria-label="Velg mediaspiller"><ha-icon icon="mdi:dots-horizontal"></ha-icon></button>
-          <div class="title">${data.title}</div>
+          <div class="title${titleIsLong ? " scrolling" : ""}"><span>${data.title}</span></div>
           <div class="artist">${data.artist}</div>
         </div>
 
