@@ -77,7 +77,21 @@ playback or changing track on another configured player will automatically move
 the card to that player.
 
 The card also includes a visual Lovelace editor for the common options:
-players, optional names, searchable media players and icons, empty title, and colors.
+players, optional names, searchable media players and icons, empty title, volume
+visibility, and colors.
+
+## Options
+
+```yaml
+type: custom:nature-media-player-card
+show_volume: false
+players:
+  - entity: media_player.kjokken
+    icon: mdi:stove
+```
+
+`show_volume` is optional and defaults to `true`. Set it to `false` if you want
+to hide the volume slider while keeping the compact control layout.
 
 ## Colors
 

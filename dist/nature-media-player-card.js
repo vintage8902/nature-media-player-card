@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.13";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.14";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -26,6 +26,7 @@ class NatureMediaPlayerCard extends HTMLElement {
 
     this.config = {
       show_selector: false,
+      show_volume: true,
       ...config,
       players: Array.isArray(config.players) ? config.players : [],
     };
@@ -219,6 +220,7 @@ class NatureMediaPlayerCard extends HTMLElement {
 
     const data = this._getDisplayData();
     const playing = data.state === "playing";
+    const showVolume = this.config.show_volume !== false;
     const volumePct = Math.round(Math.max(0, Math.min(1, data.volume)) * 100);
     const titleIsLong = String(data.title || "").length > 40;
     const choiceColumns = Math.min(Math.max(this.config.players.length || 1, 1), 4);
@@ -430,7 +432,7 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         .controls {
-          height: 66px;
+          height: ${showVolume ? 66 : 106}px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -563,10 +565,16 @@ class NatureMediaPlayerCard extends HTMLElement {
                 <button class="control play" aria-label="Spill av eller pause"><ha-icon icon="${playing ? "mdi:pause" : "mdi:play"}"></ha-icon></button>
                 <button class="control next" aria-label="Neste"><ha-icon icon="mdi:skip-next"></ha-icon></button>
               </div>
-              <div class="volume">
-                <ha-icon icon="mdi:volume-high"></ha-icon>
-                <input class="volume-slider" type="range" min="0" max="100" value="${volumePct}" />
-              </div>
+              ${
+                showVolume
+                  ? `
+                    <div class="volume">
+                      <ha-icon icon="mdi:volume-high"></ha-icon>
+                      <input class="volume-slider" type="range" min="0" max="100" value="${volumePct}" />
+                    </div>
+                  `
+                  : ""
+              }
             `
         }
       </ha-card>
@@ -644,6 +652,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     this.config = {
       players: [],
       colors: {},
+      show_volume: true,
       ...config,
     };
     this._render();
@@ -743,6 +752,15 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       <label>
         <span>${label}</span>
         <input value="${this._escape(value || "")}" placeholder="${this._escape(placeholder || "")}">
+      </label>
+    `;
+  }
+
+  _checkbox(label, checked) {
+    return `
+      <label class="checkbox">
+        <input type="checkbox" ${checked ? "checked" : ""}>
+        <span>${label}</span>
       </label>
     `;
   }
@@ -861,6 +879,15 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           color: var(--secondary-text-color);
         }
 
+        .checkbox {
+          min-height: 40px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: var(--primary-text-color);
+          font-size: 14px;
+        }
+
         input,
         select,
         ha-icon-picker {
@@ -879,6 +906,16 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           color: var(--primary-text-color);
           font: inherit;
           outline: none;
+        }
+
+        .checkbox input {
+          width: 20px;
+          min-height: 20px;
+          padding: 0;
+          border: 0;
+          border-radius: 4px;
+          background: transparent;
+          accent-color: var(--primary-color);
         }
 
         input::placeholder {
@@ -1017,6 +1054,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         <div class="section">
           <h3>General</h3>
           ${this._input("Empty title", this.config.empty_title, "Ingen media")}
+          ${this._checkbox("Show volume", this.config.show_volume !== false)}
         </div>
 
         <div class="section">
@@ -1059,9 +1097,8 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     `;
 
     const generalInputs = this.shadowRoot.querySelectorAll(".section:first-child input");
-    ["empty_title"].forEach((key, index) => {
-      generalInputs[index]?.addEventListener("change", (ev) => this._setValue(key, ev.target.value.trim()));
-    });
+    generalInputs[0]?.addEventListener("change", (ev) => this._setValue("empty_title", ev.target.value.trim()));
+    generalInputs[1]?.addEventListener("change", (ev) => this._setValue("show_volume", ev.target.checked ? undefined : false));
 
     this.shadowRoot.querySelectorAll(".player").forEach((playerEl) => {
       const index = Number(playerEl.dataset.index);
