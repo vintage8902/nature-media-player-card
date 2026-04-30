@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.10";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.11";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -258,6 +258,8 @@ class NatureMediaPlayerCard extends HTMLElement {
           max-width: 100%;
           min-width: 0;
           overflow: hidden;
+          box-sizing: border-box;
+          contain: layout paint;
           --nmp-primary: var(--primary-color, #1E3A2F);
           --nmp-surface: ${colors.surface};
           --nmp-border: ${colors.border};
@@ -287,6 +289,14 @@ class NatureMediaPlayerCard extends HTMLElement {
             var(--nmp-shadow);
           overflow: hidden;
           box-sizing: border-box;
+        }
+
+        @media (max-width: 600px) {
+          :host,
+          ha-card {
+            width: 100%;
+            max-width: calc(100vw - 24px);
+          }
         }
 
         .header {
@@ -379,8 +389,11 @@ class NatureMediaPlayerCard extends HTMLElement {
           0%, 15% {
             transform: translateX(0);
           }
-          85%, 100% {
+          45%, 65% {
             transform: translateX(calc(-1 * var(--nmp-title-distance, 0px)));
+          }
+          95%, 100% {
+            transform: translateX(0);
           }
         }
 
@@ -465,6 +478,7 @@ class NatureMediaPlayerCard extends HTMLElement {
 
         input[type="range"] {
           width: 100%;
+          max-width: 100%;
           min-width: 0;
           accent-color: var(--nmp-accent);
         }
