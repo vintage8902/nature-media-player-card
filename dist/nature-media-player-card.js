@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.18";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.19";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -29,6 +29,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       show_volume: true,
       ...config,
       players: Array.isArray(config.players) ? config.players : [],
+      playlists: Array.isArray(config.playlists) ? config.playlists : [],
     };
     this._choicesOpen = false;
     this.attachShadow({ mode: "open" });
@@ -202,6 +203,17 @@ class NatureMediaPlayerCard extends HTMLElement {
     );
   }
 
+  _selectSource(source) {
+    const entityId = this._getActiveEntityId();
+    if (!entityId || !source) return;
+    this._hass.callService(
+      "media_player",
+      "select_source",
+      { source },
+      { entity_id: entityId },
+    );
+  }
+
   _selectPlayer(player) {
     if (player.entity) {
       this._storeEntityId(player.entity);
@@ -227,19 +239,30 @@ class NatureMediaPlayerCard extends HTMLElement {
     this._render();
   }
 
+  _escape(value) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
   _render() {
     if (!this.shadowRoot || !this._hass || !this.config) return;
 
     const data = this._getDisplayData();
     const playing = data.state === "playing";
     const showVolume = this.config.show_volume !== false;
+    const playlists = Array.isArray(this.config.playlists) ? this.config.playlists.filter((item) => item?.source) : [];
+    const showPlaylists = playlists.length > 0 && !this._choicesOpen;
     const volumePct = Math.round(Math.max(0, Math.min(1, data.volume)) * 100);
     const volumeIcon = data.muted ? "mdi:volume-off" : "mdi:volume-high";
     const titleIsLong = String(data.title || "").length > 40;
     const choiceColumns = Math.min(Math.max(this.config.players.length || 1, 1), 4);
     const choiceRows = Math.max(1, Math.ceil((this.config.players.length || 1) / choiceColumns));
     const extraChoiceHeight = Math.max(0, choiceRows - 1) * 82;
-    const controlHeight = showVolume ? 195 : 154;
+    const playlistHeight = showPlaylists ? 42 : 0;
+    const controlHeight = (showVolume ? 195 : 154) + playlistHeight;
     const cardHeight = this._choicesOpen ? 195 + extraChoiceHeight : controlHeight;
     const choicesHeight = 106 + extraChoiceHeight;
     const colors = {
@@ -272,6 +295,18 @@ class NatureMediaPlayerCard extends HTMLElement {
               <span class="choice-playing"><ha-icon icon="mdi:music-note"></ha-icon></span>
             </span>
             <span class="choice-name">${playerName}</span>
+          </button>
+        `;
+      })
+      .join("");
+    const playlistButtons = playlists
+      .map((playlist) => {
+        const source = playlist.source;
+        const name = playlist.name || source;
+        return `
+          <button class="playlist" data-source="${this._escape(source)}">
+            <ha-icon icon="${playlist.icon || "mdi:playlist-music"}"></ha-icon>
+            <span>${this._escape(name)}</span>
           </button>
         `;
       })
@@ -512,6 +547,53 @@ class NatureMediaPlayerCard extends HTMLElement {
           cursor: pointer;
         }
 
+        .playlists {
+          height: 42px;
+          padding: 0 18px 10px;
+          box-sizing: border-box;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          overflow-x: auto;
+          overflow-y: hidden;
+          scrollbar-width: none;
+        }
+
+        .playlists::-webkit-scrollbar {
+          display: none;
+        }
+
+        .playlist {
+          height: 32px;
+          flex: 0 0 auto;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          max-width: 150px;
+          border: 1px solid rgba(168, 196, 154, 0.13);
+          border-radius: 999px;
+          padding: 0 11px;
+          color: var(--nmp-text);
+          background: rgba(168, 196, 154, 0.12);
+          box-shadow: none;
+          cursor: pointer;
+        }
+
+        .playlist ha-icon {
+          width: 17px;
+          height: 17px;
+          flex: 0 0 auto;
+        }
+
+        .playlist span {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 12px;
+          font-weight: 700;
+        }
+
         .volume-button ha-icon {
           width: 20px;
           height: 20px;
@@ -638,6 +720,7 @@ class NatureMediaPlayerCard extends HTMLElement {
                   `
                   : ""
               }
+              ${showPlaylists ? `<div class="playlists">${playlistButtons}</div>` : ""}
             `
         }
       </ha-card>
@@ -672,6 +755,13 @@ class NatureMediaPlayerCard extends HTMLElement {
     this.shadowRoot.querySelector(".volume-button")?.addEventListener("click", (ev) => {
       ev.stopPropagation();
       this._toggleMute(data.muted);
+    });
+
+    this.shadowRoot.querySelectorAll(".playlist").forEach((button) => {
+      button.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        this._selectSource(ev.currentTarget.dataset.source);
+      });
     });
 
     this.shadowRoot.querySelectorAll(".choice").forEach((button) => {
@@ -719,6 +809,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
   setConfig(config) {
     this.config = {
       players: [],
+      playlists: [],
       colors: {},
       show_volume: true,
       ...config,
@@ -727,11 +818,15 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
   }
 
   _orderedConfig(config) {
-    const { type, players, colors, ...rest } = config;
+    const { type, players, playlists, colors, ...rest } = config;
     const ordered = {
       type: type || "custom:nature-media-player-card",
       players: Array.isArray(players) ? players : [],
     };
+
+    if (Array.isArray(playlists) && playlists.length) {
+      ordered.playlists = playlists;
+    }
 
     Object.entries(rest).forEach(([key, value]) => {
       if (value !== undefined) ordered[key] = value;
@@ -799,6 +894,19 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     this._fireConfigChanged({ ...this.config, players });
   }
 
+  _setPlaylist(index, key, value) {
+    const playlists = [...(this.config.playlists || [])];
+    playlists[index] = { ...(playlists[index] || {}) };
+
+    if (value === "" || value === null || value === undefined) {
+      delete playlists[index][key];
+    } else {
+      playlists[index][key] = value;
+    }
+
+    this._fireConfigChanged({ ...this.config, playlists });
+  }
+
   _addPlayer() {
     const players = [...(this.config.players || [])];
     players.push({
@@ -809,10 +917,27 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     this._fireConfigChanged({ ...this.config, players });
   }
 
+  _addPlaylist() {
+    const sources = this._availableSources();
+    const playlists = [...(this.config.playlists || [])];
+    playlists.push({
+      source: sources[0] || "",
+      name: "",
+      icon: "mdi:playlist-music",
+    });
+    this._fireConfigChanged({ ...this.config, playlists });
+  }
+
   _removePlayer(index) {
     const players = [...(this.config.players || [])];
     players.splice(index, 1);
     this._fireConfigChanged({ ...this.config, players });
+  }
+
+  _removePlaylist(index) {
+    const playlists = [...(this.config.playlists || [])];
+    playlists.splice(index, 1);
+    this._fireConfigChanged({ ...this.config, playlists });
   }
 
   _input(label, value, placeholder, onChange) {
@@ -886,6 +1011,39 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     `;
   }
 
+  _availableSources() {
+    const sources = new Set();
+    (this.config.players || []).forEach((player) => {
+      const sourceList = this._hass?.states?.[player.entity]?.attributes?.source_list;
+      if (Array.isArray(sourceList)) {
+        sourceList.forEach((source) => {
+          if (source) sources.add(String(source));
+        });
+      }
+    });
+    return [...sources].sort((a, b) => a.localeCompare(b));
+  }
+
+  _sourceSelect(label, value, sources) {
+    return `
+      <label>
+        <span>${label}</span>
+        <select class="playlist-source">
+          <option value="">Choose source</option>
+          ${sources
+            .map(
+              (source) => `
+                <option value="${this._escape(source)}" ${source === value ? "selected" : ""}>
+                  ${this._escape(source)}
+                </option>
+              `,
+            )
+            .join("")}
+        </select>
+      </label>
+    `;
+  }
+
   _escape(value) {
     return String(value)
       .replaceAll("&", "&amp;")
@@ -899,6 +1057,8 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     if (this._hass) this._renderedWithHass = true;
 
     const players = this.config.players || [];
+    const playlists = this.config.playlists || [];
+    const sources = this._availableSources();
     const colors = this.config.colors || {};
     const colorFields = [
       ["surface", "Surface"],
@@ -1055,6 +1215,14 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           border-radius: 12px;
         }
 
+        .playlist-editor {
+          display: grid;
+          gap: 10px;
+          padding: 12px;
+          border: 1px solid var(--divider-color);
+          border-radius: 12px;
+        }
+
         .player-head {
           display: flex;
           align-items: center;
@@ -1153,6 +1321,36 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           <button class="add-player">Add Player</button>
         </div>
 
+        <div class="section">
+          <h3>Playlists</h3>
+          ${
+            sources.length
+              ? playlists.length
+                ? playlists
+                    .map(
+                      (playlist, index) => `
+                        <div class="playlist-editor" data-index="${index}">
+                          <div class="player-head">
+                            <span>Playlist ${index + 1}</span>
+                            <button class="ghost icon-button remove-playlist" data-index="${index}" aria-label="Remove playlist">
+                              <ha-icon icon="mdi:trash-can-outline"></ha-icon>
+                            </button>
+                          </div>
+                          <div class="grid">
+                            ${this._sourceSelect("Source", playlist.source, sources)}
+                            ${this._input("Name (Optional)", playlist.name, "Uses the source name")}
+                            ${this._iconPicker("Icon", playlist.icon || "mdi:playlist-music")}
+                          </div>
+                        </div>
+                      `,
+                    )
+                    .join("")
+                : `<p>No playlists yet.</p>`
+              : `<p>No source list found on the configured media players.</p>`
+          }
+          <button class="add-playlist" ${sources.length ? "" : "disabled"}>Add Playlist</button>
+        </div>
+
         <details>
           <summary>Colors</summary>
           <div class="colors">
@@ -1195,7 +1393,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       });
 
       const keys = ["name"];
-      playerEl.querySelectorAll("input").forEach((input, inputIndex) => {
+      playerEl.querySelectorAll("input:not(.entity-input)").forEach((input, inputIndex) => {
         input.addEventListener("change", (ev) => this._setPlayer(index, keys[inputIndex], ev.target.value.trim()));
       });
 
@@ -1204,11 +1402,32 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       });
     });
 
+    this.shadowRoot.querySelectorAll(".playlist-editor").forEach((playlistEl) => {
+      const index = Number(playlistEl.dataset.index);
+
+      playlistEl.querySelector(".playlist-source")?.addEventListener("change", (ev) => {
+        this._setPlaylist(index, "source", ev.target.value);
+      });
+
+      playlistEl.querySelector("input")?.addEventListener("change", (ev) => {
+        this._setPlaylist(index, "name", ev.target.value.trim());
+      });
+
+      playlistEl.querySelector(".icon-picker")?.addEventListener("value-changed", (ev) => {
+        this._setPlaylist(index, "icon", ev.detail?.value || "");
+      });
+    });
+
     this.shadowRoot.querySelectorAll(".remove-player").forEach((button) => {
       button.addEventListener("click", (ev) => this._removePlayer(Number(ev.currentTarget.dataset.index)));
     });
 
+    this.shadowRoot.querySelectorAll(".remove-playlist").forEach((button) => {
+      button.addEventListener("click", (ev) => this._removePlaylist(Number(ev.currentTarget.dataset.index)));
+    });
+
     this.shadowRoot.querySelector(".add-player")?.addEventListener("click", () => this._addPlayer());
+    this.shadowRoot.querySelector(".add-playlist")?.addEventListener("click", () => this._addPlaylist());
 
     this.shadowRoot.querySelectorAll(".colors input").forEach((input, index) => {
       input.addEventListener("change", (ev) => this._setColor(colorFields[index][0], ev.target.value.trim()));

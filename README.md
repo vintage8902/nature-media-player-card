@@ -88,11 +88,19 @@ show_volume: false
 players:
   - entity: media_player.kjokken
     icon: mdi:stove
+playlists:
+  - source: Evening Chill
+    name: Chill
+    icon: mdi:leaf
 ```
 
 `show_volume` is optional and defaults to `true`. Set it to `false` if you want
 to hide the volume slider and use a shorter compact control layout. When volume
 is shown, tap the volume icon to mute or unmute the active player.
+
+`playlists` is optional. Playlist buttons use `media_player.select_source` on
+the active player, and the visual editor can add playlists from the `source_list`
+available on the configured media players.
 
 ## Colors
 
