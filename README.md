@@ -74,7 +74,7 @@ players:
 
 Tap the three-dot button on the card to manually choose a player. Starting
 playback or changing track on another configured player will automatically move
-the card to that player.
+the card to that player. Active players are marked in the player picker.
 
 The card also includes a visual Lovelace editor for the common options:
 players, optional names, searchable media players and icons, empty title, volume
@@ -91,7 +91,7 @@ players:
 ```
 
 `show_volume` is optional and defaults to `true`. Set it to `false` if you want
-to hide the volume slider while keeping the compact control layout.
+to hide the volume slider and use a shorter compact control layout.
 
 ## Colors
 

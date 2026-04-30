@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.14";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.15";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -41,7 +41,7 @@ class NatureMediaPlayerCard extends HTMLElement {
   }
 
   getCardSize() {
-    if (!this._choicesOpen) return 3;
+    if (!this._choicesOpen) return this.config?.show_volume === false ? 2 : 3;
     const players = this.config?.players?.length || 1;
     return 3 + Math.max(1, Math.ceil(players / 4));
   }
@@ -226,7 +226,8 @@ class NatureMediaPlayerCard extends HTMLElement {
     const choiceColumns = Math.min(Math.max(this.config.players.length || 1, 1), 4);
     const choiceRows = Math.max(1, Math.ceil((this.config.players.length || 1) / choiceColumns));
     const extraChoiceHeight = Math.max(0, choiceRows - 1) * 82;
-    const cardHeight = this._choicesOpen ? 195 + extraChoiceHeight : 195;
+    const controlHeight = showVolume ? 195 : 154;
+    const cardHeight = this._choicesOpen ? 195 + extraChoiceHeight : controlHeight;
     const choicesHeight = 106 + extraChoiceHeight;
     const colors = {
       surface: "rgba(60, 94, 74, 0.72)",
@@ -248,11 +249,15 @@ class NatureMediaPlayerCard extends HTMLElement {
       .map((player) => {
         const selected = player.entity === data.activeEntity ? " selected" : "";
         const playerState = this._hass?.states?.[player.entity];
+        const active = this._isActiveMediaState(playerState) ? " active" : "";
         const playerName =
           player.name || player.option || playerState?.attributes?.friendly_name || player.entity;
         return `
-          <button class="choice${selected}" data-player="${player.entity}">
-            <span class="choice-icon"><ha-icon icon="${player.icon || "mdi:speaker"}"></ha-icon></span>
+          <button class="choice${selected}${active}" data-player="${player.entity}">
+            <span class="choice-icon">
+              <ha-icon icon="${player.icon || "mdi:speaker"}"></ha-icon>
+              <span class="choice-playing"><ha-icon icon="mdi:music-note"></ha-icon></span>
+            </span>
             <span class="choice-name">${playerName}</span>
           </button>
         `;
@@ -432,7 +437,7 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         .controls {
-          height: ${showVolume ? 66 : 106}px;
+          height: ${showVolume ? 66 : 92}px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -516,6 +521,7 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         .choice-icon {
+          position: relative;
           width: 54px;
           height: 54px;
           border-radius: 50%;
@@ -535,6 +541,30 @@ class NatureMediaPlayerCard extends HTMLElement {
         .choice-icon ha-icon {
           width: 25px;
           height: 25px;
+        }
+
+        .choice-playing {
+          position: absolute;
+          right: -2px;
+          top: -2px;
+          width: 19px;
+          height: 19px;
+          border-radius: 50%;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          color: var(--nmp-active-text);
+          background: var(--nmp-accent);
+          box-shadow: 0 0 10px rgba(168, 196, 154, 0.28);
+        }
+
+        .choice-playing ha-icon {
+          width: 12px;
+          height: 12px;
+        }
+
+        .choice.active .choice-playing {
+          display: flex;
         }
 
         .choice-name {
