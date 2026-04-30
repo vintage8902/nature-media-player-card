@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.15";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.16";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -249,7 +249,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       .map((player) => {
         const selected = player.entity === data.activeEntity ? " selected" : "";
         const playerState = this._hass?.states?.[player.entity];
-        const active = this._isActiveMediaState(playerState) ? " active" : "";
+        const active = playerState?.state === "playing" ? " active" : "";
         const playerName =
           player.name || player.option || playerState?.attributes?.friendly_name || player.entity;
         return `
@@ -437,7 +437,7 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         .controls {
-          height: ${showVolume ? 66 : 92}px;
+          height: 66px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -553,14 +553,18 @@ class NatureMediaPlayerCard extends HTMLElement {
           display: none;
           align-items: center;
           justify-content: center;
+          line-height: 0;
           color: var(--nmp-active-text);
           background: var(--nmp-accent);
           box-shadow: 0 0 10px rgba(168, 196, 154, 0.28);
+          pointer-events: none;
         }
 
         .choice-playing ha-icon {
           width: 12px;
           height: 12px;
+          display: block;
+          --mdc-icon-size: 12px;
         }
 
         .choice.active .choice-playing {
