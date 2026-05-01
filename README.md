@@ -108,7 +108,7 @@ is shown, tap the volume icon to mute or unmute the active player.
 </p>
 
 <p align="center">
-  <em>Quickle select a playlist from the playlist view.</em>
+  <em>Quickly select a playlist from the playlist view.</em>
 </p>
 
 `playlists` is optional and intended for Music Assistant players. Enable
