@@ -15,6 +15,17 @@ three-dot button.
   <em>A compact multi-speaker media card with playback controls, volume adjustment and quick player switching.</em>
 </p>
 
+## Features
+
+- Control multiple media players from one compact Lovelace card
+- Automatically follows the latest active player
+- Switch players manually with a built-in player picker
+- Optional Music Assistant playlist picker
+- Volume slider with mute/unmute support
+- Visual Lovelace editor
+- Custom icons, names and colors
+
+
 ## Install With HACS
 
 1. Open HACS in Home Assistant.
