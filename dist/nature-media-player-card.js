@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.19";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.20";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -203,15 +203,20 @@ class NatureMediaPlayerCard extends HTMLElement {
     );
   }
 
-  _selectSource(source) {
+  _playMusicAssistantPlaylist(playlist) {
     const entityId = this._getActiveEntityId();
-    if (!entityId || !source) return;
-    this._hass.callService(
-      "media_player",
-      "select_source",
-      { source },
-      { entity_id: entityId },
-    );
+    const mediaId = playlist?.media_id || playlist?.source;
+    if (!entityId || !mediaId) return;
+
+    const data = {
+      media_id: mediaId,
+      media_type: "playlist",
+    };
+    if (this.config.music_assistant_config_entry_id) {
+      data.config_entry_id = this.config.music_assistant_config_entry_id;
+    }
+
+    this._hass.callService("music_assistant", "play_media", data, { entity_id: entityId });
   }
 
   _selectPlayer(player) {
@@ -253,7 +258,9 @@ class NatureMediaPlayerCard extends HTMLElement {
     const data = this._getDisplayData();
     const playing = data.state === "playing";
     const showVolume = this.config.show_volume !== false;
-    const playlists = Array.isArray(this.config.playlists) ? this.config.playlists.filter((item) => item?.source) : [];
+    const playlists = Array.isArray(this.config.playlists)
+      ? this.config.playlists.filter((item) => item?.media_id || item?.source)
+      : [];
     const showPlaylists = playlists.length > 0 && !this._choicesOpen;
     const volumePct = Math.round(Math.max(0, Math.min(1, data.volume)) * 100);
     const volumeIcon = data.muted ? "mdi:volume-off" : "mdi:volume-high";
@@ -300,11 +307,11 @@ class NatureMediaPlayerCard extends HTMLElement {
       })
       .join("");
     const playlistButtons = playlists
-      .map((playlist) => {
-        const source = playlist.source;
-        const name = playlist.name || source;
+      .map((playlist, index) => {
+        const mediaId = playlist.media_id || playlist.source;
+        const name = playlist.name || playlist.title || mediaId;
         return `
-          <button class="playlist" data-source="${this._escape(source)}">
+          <button class="playlist" data-playlist-index="${index}">
             <ha-icon icon="${playlist.icon || "mdi:playlist-music"}"></ha-icon>
             <span>${this._escape(name)}</span>
           </button>
@@ -760,7 +767,7 @@ class NatureMediaPlayerCard extends HTMLElement {
     this.shadowRoot.querySelectorAll(".playlist").forEach((button) => {
       button.addEventListener("click", (ev) => {
         ev.stopPropagation();
-        this._selectSource(ev.currentTarget.dataset.source);
+        this._playMusicAssistantPlaylist(playlists[Number(ev.currentTarget.dataset.playlistIndex)]);
       });
     });
 
@@ -798,6 +805,9 @@ window.customCards.push({
 class NatureMediaPlayerCardEditor extends HTMLElement {
   constructor() {
     super();
+    this._maPlaylistOptions = [];
+    this._maPlaylistLoading = false;
+    this._maPlaylistError = "";
     this.attachShadow({ mode: "open" });
   }
 
@@ -918,11 +928,11 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
   }
 
   _addPlaylist() {
-    const sources = this._availableSources();
     const playlists = [...(this.config.playlists || [])];
+    const option = this._maPlaylistOptions[0] || {};
     playlists.push({
-      source: sources[0] || "",
-      name: "",
+      media_id: option.media_id || "",
+      name: option.name || "",
       icon: "mdi:playlist-music",
     });
     this._fireConfigChanged({ ...this.config, playlists });
@@ -1011,30 +1021,105 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     `;
   }
 
-  _availableSources() {
-    const sources = new Set();
-    (this.config.players || []).forEach((player) => {
-      const sourceList = this._hass?.states?.[player.entity]?.attributes?.source_list;
-      if (Array.isArray(sourceList)) {
-        sourceList.forEach((source) => {
-          if (source) sources.add(String(source));
+  async _loadMusicAssistantPlaylists() {
+    const configEntryId = this.config.music_assistant_config_entry_id;
+    if (!configEntryId || !this._hass || this._maPlaylistLoading) return;
+
+    this._maPlaylistLoading = true;
+    this._maPlaylistError = "";
+    this._render();
+
+    try {
+      const data = {
+        config_entry_id: configEntryId,
+        media_type: "playlist",
+        limit: Number(this.config.music_assistant_playlist_limit || 50),
+        library_only: this.config.music_assistant_library_only === true,
+      };
+      let response = await this._hass.callService(
+        "music_assistant",
+        "get_library",
+        data,
+        undefined,
+        true,
+        true,
+      );
+      if (!response && this._hass.callWS) {
+        response = await this._hass.callWS({
+          type: "execute_script",
+          sequence: [
+            {
+              service: "music_assistant.get_library",
+              data,
+              response_variable: "ma_playlists",
+            },
+          ],
+          return_response: true,
         });
       }
-    });
-    return [...sources].sort((a, b) => a.localeCompare(b));
+      const items = this._extractMusicAssistantItems(response);
+      this._maPlaylistOptions = items.map((item) => this._mapMusicAssistantPlaylist(item)).filter((item) => item.media_id);
+      if (!this._maPlaylistOptions.length) {
+        this._maPlaylistError = "No playlists returned from Music Assistant.";
+      }
+    } catch (err) {
+      this._maPlaylistOptions = [];
+      this._maPlaylistError = err?.message || "Could not load Music Assistant playlists.";
+    } finally {
+      this._maPlaylistLoading = false;
+      this._render();
+    }
   }
 
-  _sourceSelect(label, value, sources) {
+  _extractMusicAssistantItems(response) {
+    const candidates = [
+      response?.items,
+      response?.playlists,
+      response?.playlist,
+      response?.response?.items,
+      response?.response?.playlists,
+      response?.response?.ma_playlists?.items,
+      response?.response?.ma_playlists?.playlists,
+      response?.service_response?.items,
+      response?.result?.items,
+      response,
+    ];
+    const found = candidates.find((item) => Array.isArray(item));
+    return found || [];
+  }
+
+  _mapMusicAssistantPlaylist(item) {
+    const mediaId = item?.uri || item?.media_id || item?.item_id || item?.id || item?.name || item?.title || "";
+    const name = item?.name || item?.title || item?.media_title || mediaId;
+    return {
+      media_id: String(mediaId),
+      name: String(name),
+    };
+  }
+
+  _setPlaylistFromOption(index, mediaId) {
+    const option = this._maPlaylistOptions.find((item) => item.media_id === mediaId) || {};
+    const playlists = [...(this.config.playlists || [])];
+    playlists[index] = {
+      ...(playlists[index] || {}),
+      media_id: mediaId,
+      name: playlists[index]?.name || option.name || "",
+    };
+    delete playlists[index].source;
+    this._fireConfigChanged({ ...this.config, playlists });
+  }
+
+  _playlistSelect(label, value, options) {
     return `
       <label>
         <span>${label}</span>
         <select class="playlist-source">
-          <option value="">Choose source</option>
-          ${sources
+          <option value="">Choose playlist</option>
+          ${options
             .map(
-              (source) => `
-                <option value="${this._escape(source)}" ${source === value ? "selected" : ""}>
-                  ${this._escape(source)}
+              (option) => `
+                <option value="${this._escape(option.media_id)}" ${option.media_id === value ? "selected" : ""}>
+                  ${this._escape(option.name)}
                 </option>
               `,
             )
@@ -1058,7 +1143,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
     const players = this.config.players || [];
     const playlists = this.config.playlists || [];
-    const sources = this._availableSources();
+    const playlistOptions = this._maPlaylistOptions || [];
     const colors = this.config.colors || {};
     const colorFields = [
       ["surface", "Surface"],
@@ -1290,6 +1375,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         <div class="section">
           <h3>General</h3>
           ${this._input("Empty title", this.config.empty_title, "Ingen media")}
+          ${this._input("Music Assistant config entry ID", this.config.music_assistant_config_entry_id, "01KQGB3DHD2S9Q2YAPJCWSTCYX")}
           ${this._checkbox("Show volume", this.config.show_volume !== false)}
         </div>
 
@@ -1323,8 +1409,12 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
         <div class="section">
           <h3>Playlists</h3>
+          <button class="load-playlists" ${this.config.music_assistant_config_entry_id ? "" : "disabled"}>
+            ${this._maPlaylistLoading ? "Loading..." : "Load Music Assistant playlists"}
+          </button>
+          ${this._maPlaylistError ? `<p>${this._escape(this._maPlaylistError)}</p>` : ""}
           ${
-            sources.length
+            playlistOptions.length
               ? playlists.length
                 ? playlists
                     .map(
@@ -1337,7 +1427,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
                             </button>
                           </div>
                           <div class="grid">
-                            ${this._sourceSelect("Source", playlist.source, sources)}
+                            ${this._playlistSelect("Playlist", playlist.media_id || playlist.source, playlistOptions)}
                             ${this._input("Name (Optional)", playlist.name, "Uses the source name")}
                             ${this._iconPicker("Icon", playlist.icon || "mdi:playlist-music")}
                           </div>
@@ -1346,9 +1436,9 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
                     )
                     .join("")
                 : `<p>No playlists yet.</p>`
-              : `<p>No source list found on the configured media players.</p>`
+              : `<p>Load playlists from Music Assistant before adding one.</p>`
           }
-          <button class="add-playlist" ${sources.length ? "" : "disabled"}>Add Playlist</button>
+          <button class="add-playlist" ${playlistOptions.length ? "" : "disabled"}>Add Playlist</button>
         </div>
 
         <details>
@@ -1364,7 +1454,11 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
     const generalInputs = this.shadowRoot.querySelectorAll(".section:first-child input");
     generalInputs[0]?.addEventListener("change", (ev) => this._setValue("empty_title", ev.target.value.trim()));
-    generalInputs[1]?.addEventListener("change", (ev) => this._setValue("show_volume", ev.target.checked ? undefined : false));
+    generalInputs[1]?.addEventListener("change", (ev) => {
+      this._maPlaylistOptions = [];
+      this._setValue("music_assistant_config_entry_id", ev.target.value.trim());
+    });
+    generalInputs[2]?.addEventListener("change", (ev) => this._setValue("show_volume", ev.target.checked ? undefined : false));
 
     this.shadowRoot.querySelectorAll(".player").forEach((playerEl) => {
       const index = Number(playerEl.dataset.index);
@@ -1406,7 +1500,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       const index = Number(playlistEl.dataset.index);
 
       playlistEl.querySelector(".playlist-source")?.addEventListener("change", (ev) => {
-        this._setPlaylist(index, "source", ev.target.value);
+        this._setPlaylistFromOption(index, ev.target.value);
       });
 
       playlistEl.querySelector("input")?.addEventListener("change", (ev) => {
@@ -1428,6 +1522,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
     this.shadowRoot.querySelector(".add-player")?.addEventListener("click", () => this._addPlayer());
     this.shadowRoot.querySelector(".add-playlist")?.addEventListener("click", () => this._addPlaylist());
+    this.shadowRoot.querySelector(".load-playlists")?.addEventListener("click", () => this._loadMusicAssistantPlaylists());
 
     this.shadowRoot.querySelectorAll(".colors input").forEach((input, index) => {
       input.addEventListener("change", (ev) => this._setColor(colorFields[index][0], ev.target.value.trim()));

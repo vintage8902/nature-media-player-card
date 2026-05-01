@@ -85,11 +85,12 @@ visibility, and colors.
 ```yaml
 type: custom:nature-media-player-card
 show_volume: false
+music_assistant_config_entry_id: 01KQGB3DHD2S9Q2YAPJCWSTCYX
 players:
   - entity: media_player.kjokken
     icon: mdi:stove
 playlists:
-  - source: Evening Chill
+  - media_id: library://playlist/example
     name: Chill
     icon: mdi:leaf
 ```
@@ -98,9 +99,10 @@ playlists:
 to hide the volume slider and use a shorter compact control layout. When volume
 is shown, tap the volume icon to mute or unmute the active player.
 
-`playlists` is optional. Playlist buttons use `media_player.select_source` on
-the active player, and the visual editor can add playlists from the `source_list`
-available on the configured media players.
+`playlists` is optional and intended for Music Assistant players. Playlist
+buttons call `music_assistant.play_media` on the active player. In the visual
+editor, add your Music Assistant `config_entry_id`, load playlists from Music
+Assistant, and then add the playlists you want to show.
 
 ## Colors
 
