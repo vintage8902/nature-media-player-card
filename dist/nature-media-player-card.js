@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.28";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.29";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -1283,6 +1283,8 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         select,
         ha-icon-picker {
           width: 100%;
+          max-width: 100%;
+          min-width: 0;
           box-sizing: border-box;
         }
 
@@ -1415,12 +1417,21 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           gap: 10px;
         }
 
-        .playlist-grid {
-          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        .grid label:has(.icon-picker) {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          overflow: hidden;
         }
 
-        .playlist-grid label:has(.icon-picker) {
-          max-width: 240px;
+        .grid .icon-picker {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+        }
+
+        .playlist-grid {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         }
 
         .playlist-grid .checkbox {
