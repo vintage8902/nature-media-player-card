@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.26";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.27";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -221,7 +221,7 @@ class NatureMediaPlayerCard extends HTMLElement {
 
     this._hass.callService("music_assistant", "play_media", data, { entity_id: entityId });
 
-    if (this.config.shuffle_playlists === true) {
+    if (playlist?.shuffle === true || this.config.shuffle_playlists === true) {
       this._hass.callService("media_player", "shuffle_set", { shuffle: true }, { entity_id: entityId });
     }
   }
@@ -812,12 +812,16 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     this._maPlaylistOptions = [];
     this._maPlaylistLoading = false;
     this._maPlaylistError = "";
+    this._maConfigEntries = [];
+    this._maConfigEntriesLoaded = false;
+    this._maConfigEntriesLoading = false;
     this._playlistsOpen = false;
     this.attachShadow({ mode: "open" });
   }
 
   set hass(hass) {
     this._hass = hass;
+    if (this.config) this._loadMusicAssistantConfigEntries();
     if (this.config && !this._renderedWithHass) this._render();
   }
 
@@ -1025,6 +1029,71 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           value="${this._escape(value || "")}"
           label="${this._escape(label)}"
         ></ha-icon-picker>
+      </label>
+    `;
+  }
+
+  async _loadMusicAssistantConfigEntries() {
+    if (!this._hass?.callWS || this._maConfigEntriesLoaded || this._maConfigEntriesLoading) return;
+
+    this._maConfigEntriesLoading = true;
+    try {
+      let response;
+      let domainFiltered = false;
+      try {
+        response = await this._hass.callWS({ type: "config_entries/get", domain: "music_assistant" });
+        domainFiltered = true;
+      } catch (_err) {
+        response = await this._hass.callWS({ type: "config_entries/get" });
+      }
+
+      const entries = Array.isArray(response) ? response : response?.entries || [];
+      this._maConfigEntries = entries
+        .filter((entry) => domainFiltered || entry?.domain === "music_assistant")
+        .map((entry) => ({
+          id: entry.entry_id || entry.id,
+          title: entry.title || entry.name || entry.entry_id || entry.id,
+        }))
+        .filter((entry) => entry.id);
+    } catch (_err) {
+      this._maConfigEntries = [];
+    } finally {
+      this._maConfigEntriesLoaded = true;
+      this._maConfigEntriesLoading = false;
+      this._render();
+    }
+  }
+
+  _musicAssistantConfigEntryPicker() {
+    if (!this._maConfigEntries.length) {
+      return `
+        <label>
+          <span>Music Assistant config entry ID</span>
+          <input
+            class="ma-config-entry"
+            value="${this._escape(this.config.music_assistant_config_entry_id || "")}"
+            placeholder="${this._maConfigEntriesLoading ? "Loading Music Assistant entries" : ""}"
+          >
+        </label>
+      `;
+    }
+
+    const current = this.config.music_assistant_config_entry_id || "";
+    return `
+      <label>
+        <span>Music Assistant config entry ID</span>
+        <select class="ma-config-entry">
+          <option value="">Choose Music Assistant entry</option>
+          ${this._maConfigEntries
+            .map(
+              (entry) => `
+                <option value="${this._escape(entry.id)}" ${entry.id === current ? "selected" : ""}>
+                  ${this._escape(entry.title)}
+                </option>
+              `,
+            )
+            .join("")}
+        </select>
       </label>
     `;
   }
@@ -1419,8 +1488,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         <details class="playlists-details" ${this._playlistsOpen ? "open" : ""}>
           <summary>Playlists</summary>
           <div class="section details-body">
-            ${this._input("Music Assistant config entry ID", this.config.music_assistant_config_entry_id, "")}
-            ${this._checkbox("Shuffle playlists", this.config.shuffle_playlists === true)}
+            ${this._musicAssistantConfigEntryPicker()}
             <button class="load-playlists" ${this.config.music_assistant_config_entry_id ? "" : "disabled"}>
               ${this._maPlaylistLoading ? "Loading..." : "Load Music Assistant playlists"}
             </button>
@@ -1442,6 +1510,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
                               ${this._playlistSelect("Playlist", playlist.media_id || playlist.source, playlistOptions)}
                               ${this._input("Name (Optional)", playlist.name, "Uses the playlist name")}
                               ${this._iconPicker("Icon", playlist.icon || "mdi:playlist-music")}
+                              ${this._checkbox("Shuffle this playlist", playlist.shuffle === true)}
                             </div>
                           </div>
                         `,
@@ -1473,15 +1542,10 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       this._playlistsOpen = ev.currentTarget.open;
     });
 
-    this.shadowRoot.querySelector(".playlists-details .details-body input")?.addEventListener("change", (ev) => {
+    this.shadowRoot.querySelector(".playlists-details .ma-config-entry")?.addEventListener("change", (ev) => {
       this._maPlaylistOptions = [];
       this._playlistsOpen = true;
       this._setValue("music_assistant_config_entry_id", ev.target.value.trim());
-    });
-
-    this.shadowRoot.querySelector(".playlists-details .checkbox input")?.addEventListener("change", (ev) => {
-      this._playlistsOpen = true;
-      this._setValue("shuffle_playlists", ev.target.checked ? true : undefined);
     });
 
     this.shadowRoot.querySelectorAll(".player").forEach((playerEl) => {
@@ -1532,7 +1596,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         this._setPlaylistFromOption(index, ev.target.value);
       });
 
-      playlistEl.querySelector("input")?.addEventListener("change", (ev) => {
+      playlistEl.querySelector("label:not(.checkbox) > input")?.addEventListener("change", (ev) => {
         this._playlistsOpen = true;
         this._setPlaylist(index, "name", ev.target.value.trim());
       });
@@ -1540,6 +1604,11 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       playlistEl.querySelector(".icon-picker")?.addEventListener("value-changed", (ev) => {
         this._playlistsOpen = true;
         this._setPlaylist(index, "icon", ev.detail?.value || "");
+      });
+
+      playlistEl.querySelector(".checkbox input")?.addEventListener("change", (ev) => {
+        this._playlistsOpen = true;
+        this._setPlaylist(index, "shuffle", ev.target.checked ? true : undefined);
       });
     });
 
