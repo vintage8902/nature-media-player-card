@@ -104,7 +104,7 @@ is shown, tap the volume icon to mute or unmute the active player.
 ## Playlists
 
 <p align="center">
-  <img src="docs/images/Playlists.jpg" alt="Nature Media Player Card preview">
+  <img src="docs/images/playlists.png" alt="Nature Media Player Card preview">
 </p>
 
 <p align="center">
