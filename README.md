@@ -101,6 +101,16 @@ playlists:
 to hide the volume slider and use a shorter compact control layout. When volume
 is shown, tap the volume icon to mute or unmute the active player.
 
+## Playlists
+
+<p align="center">
+  <img src="docs/images/Playlists.jpg" alt="Nature Media Player Card preview">
+</p>
+
+<p align="center">
+  <em>Quickle select a playlist from the playlist view.</em>
+</p>
+
 `playlists` is optional and intended for Music Assistant players. Enable
 playlists per player with `show_playlists: true`. When the active player has
 playlists enabled, a playlist icon appears next to the three-dot player picker.
