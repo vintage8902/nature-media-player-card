@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.33";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.34";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -220,16 +220,12 @@ class NatureMediaPlayerCard extends HTMLElement {
     };
     const shuffle = playlist?.shuffle === true;
 
-    if (!shuffle) {
-      await this._hass.callService("media_player", "shuffle_set", { shuffle: false }, { entity_id: entityId });
-      await new Promise((resolve) => setTimeout(resolve, 350));
-    }
+    await this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: entityId });
+    await new Promise((resolve) => setTimeout(resolve, 350));
 
     await this._hass.callService("music_assistant", "play_media", data, { entity_id: entityId });
-
-    if (shuffle) {
-      this._hass.callService("media_player", "shuffle_set", { shuffle: true }, { entity_id: entityId });
-    }
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: entityId });
   }
 
   _selectPlayer(player) {
