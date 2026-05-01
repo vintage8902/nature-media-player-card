@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.37";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.38";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -831,6 +831,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     this._maConfigEntries = [];
     this._maConfigEntriesLoaded = false;
     this._maConfigEntriesLoading = false;
+    this._playersOpen = true;
     this._playlistsOpen = false;
     this.attachShadow({ mode: "open" });
   }
@@ -917,6 +918,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
   }
 
   _setPlayer(index, key, value) {
+    this._playersOpen = true;
     const players = [...(this.config.players || [])];
     players[index] = { ...(players[index] || {}) };
 
@@ -943,6 +945,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
   }
 
   _addPlayer() {
+    this._playersOpen = true;
     const players = [...(this.config.players || [])];
     players.push({
       entity: this._defaultPlayerEntity(),
@@ -967,6 +970,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
   }
 
   _removePlayer(index) {
+    this._playersOpen = true;
     const players = [...(this.config.players || [])];
     players.splice(index, 1);
     this._fireConfigChanged({ ...this.config, players });
@@ -1482,6 +1486,10 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           font-weight: 600;
         }
 
+        .details-body {
+          margin-top: 12px;
+        }
+
         .colors {
           display: grid;
           gap: 10px;
@@ -1496,34 +1504,36 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           ${this._checkbox("Show volume", this.config.show_volume !== false)}
         </div>
 
-        <div class="section">
-          <h3>Players</h3>
-          ${
-            players.length
-              ? players
-                  .map(
-                    (player, index) => `
-                      <div class="player" data-index="${index}">
-                        <div class="player-head">
-                          <span>Player ${index + 1}</span>
-                          <button class="ghost icon-button remove-player" data-index="${index}" aria-label="Remove player">
-                            <ha-icon icon="mdi:trash-can-outline"></ha-icon>
-                          </button>
+        <details class="players-details" ${this._playersOpen ? "open" : ""}>
+          <summary>Players</summary>
+          <div class="section details-body">
+            ${
+              players.length
+                ? players
+                    .map(
+                      (player, index) => `
+                        <div class="player" data-index="${index}">
+                          <div class="player-head">
+                            <span>Player ${index + 1}</span>
+                            <button class="ghost icon-button remove-player" data-index="${index}" aria-label="Remove player">
+                              <ha-icon icon="mdi:trash-can-outline"></ha-icon>
+                            </button>
+                          </div>
+                          <div class="grid">
+                            ${this._entityPicker("Entity", player.entity, index)}
+                            ${this._input("Name (Optional)", player.name, "Uses the player name")}
+                            ${this._iconPicker("Icon", player.icon)}
+                            ${this._checkbox("Enable playlists for this player", player.show_playlists === true)}
+                          </div>
                         </div>
-                        <div class="grid">
-                          ${this._entityPicker("Entity", player.entity, index)}
-                          ${this._input("Name (Optional)", player.name, "Uses the player name")}
-                          ${this._iconPicker("Icon", player.icon)}
-                          ${this._checkbox("Enable playlists for this player", player.show_playlists === true)}
-                        </div>
-                      </div>
-                    `,
-                  )
-                  .join("")
-              : `<p>No players yet.</p>`
-          }
-          <button class="add-player">Add Player</button>
-        </div>
+                      `,
+                    )
+                    .join("")
+                : `<p>No players yet.</p>`
+            }
+            <button class="add-player">Add Player</button>
+          </div>
+        </details>
 
         <details class="playlists-details" ${this._playlistsOpen ? "open" : ""}>
           <summary>Playlists</summary>
@@ -1574,9 +1584,13 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       </div>
     `;
 
-    const generalInputs = this.shadowRoot.querySelectorAll(".section:first-child input");
+    const generalInputs = this.shadowRoot.querySelectorAll(".editor > .section:first-child input");
     generalInputs[0]?.addEventListener("change", (ev) => this._setValue("empty_title", ev.target.value.trim()));
     generalInputs[1]?.addEventListener("change", (ev) => this._setValue("show_volume", ev.target.checked ? undefined : false));
+
+    this.shadowRoot.querySelector(".players-details")?.addEventListener("toggle", (ev) => {
+      this._playersOpen = ev.currentTarget.open;
+    });
 
     this.shadowRoot.querySelector(".playlists-details")?.addEventListener("toggle", (ev) => {
       this._playlistsOpen = ev.currentTarget.open;
