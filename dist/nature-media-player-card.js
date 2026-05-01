@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.20";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.21";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -1034,7 +1034,6 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         config_entry_id: configEntryId,
         media_type: "playlist",
         limit: Number(this.config.music_assistant_playlist_limit || 50),
-        library_only: this.config.music_assistant_library_only === true,
       };
       let response = await this._hass.callService(
         "music_assistant",
@@ -1375,7 +1374,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         <div class="section">
           <h3>General</h3>
           ${this._input("Empty title", this.config.empty_title, "Ingen media")}
-          ${this._input("Music Assistant config entry ID", this.config.music_assistant_config_entry_id, "01KQGB3DHD2S9Q2YAPJCWSTCYX")}
+          ${this._input("Music Assistant config entry ID", this.config.music_assistant_config_entry_id, "")}
           ${this._checkbox("Show volume", this.config.show_volume !== false)}
         </div>
 
