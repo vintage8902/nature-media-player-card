@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.36";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.37";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -290,13 +290,16 @@ class NatureMediaPlayerCard extends HTMLElement {
     const volumePct = Math.round(Math.max(0, Math.min(1, data.volume)) * 100);
     const volumeIcon = data.muted ? "mdi:volume-off" : "mdi:volume-high";
     const titleIsLong = String(data.title || "").length > 40;
-    const panelItems = this._panel === "playlists" ? playlists : this.config.players;
+    const playlistPanel = this._panel === "playlists";
+    const panelItems = playlistPanel ? playlists : this.config.players;
     const choiceColumns = Math.min(Math.max(panelItems.length || 1, 1), 4);
     const choiceRows = Math.max(1, Math.ceil((panelItems.length || 1) / choiceColumns));
-    const extraChoiceHeight = Math.max(0, choiceRows - 1) * 82;
+    const choiceRowHeight = playlistPanel ? 92 : 76;
+    const choicesBaseHeight = playlistPanel ? 122 : 106;
+    const extraChoiceHeight = Math.max(0, choiceRows - 1) * (choiceRowHeight + 6);
     const controlHeight = showVolume ? 195 : 154;
-    const cardHeight = this._panel === "controls" ? controlHeight : 195 + extraChoiceHeight;
-    const choicesHeight = 106 + extraChoiceHeight;
+    const cardHeight = this._panel === "controls" ? controlHeight : 89 + choicesBaseHeight + extraChoiceHeight;
+    const choicesHeight = choicesBaseHeight + extraChoiceHeight;
     const colors = {
       surface: "rgba(60, 94, 74, 0.72)",
       border: "rgba(168, 196, 154, 0.13)",
@@ -617,7 +620,7 @@ class NatureMediaPlayerCard extends HTMLElement {
           box-sizing: border-box;
           display: grid;
           grid-template-columns: repeat(${choiceColumns}, 1fr);
-          grid-auto-rows: 76px;
+          grid-auto-rows: ${choiceRowHeight}px;
           gap: 6px;
         }
 
