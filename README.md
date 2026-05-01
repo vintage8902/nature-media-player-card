@@ -86,6 +86,7 @@ visibility, and colors.
 type: custom:nature-media-player-card
 show_volume: false
 music_assistant_config_entry_id: 01KQGB3DHD2S9Q2YAPJCWSTCYX
+shuffle_playlists: true
 players:
   - entity: media_player.kjokken
     icon: mdi:stove
@@ -110,6 +111,9 @@ active player.
 In the visual editor, add your Music Assistant `config_entry_id`, load playlists
 from Music Assistant, add the playlists you want to show, and tick **Enable
 playlists for this player** on the players that should expose them.
+
+Set `shuffle_playlists: true` if playlist selections should enable shuffle on
+the active player after starting playback.
 
 ## Colors
 

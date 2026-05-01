@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.25";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.26";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -220,6 +220,10 @@ class NatureMediaPlayerCard extends HTMLElement {
     };
 
     this._hass.callService("music_assistant", "play_media", data, { entity_id: entityId });
+
+    if (this.config.shuffle_playlists === true) {
+      this._hass.callService("media_player", "shuffle_set", { shuffle: true }, { entity_id: entityId });
+    }
   }
 
   _selectPlayer(player) {
@@ -567,7 +571,7 @@ class NatureMediaPlayerCard extends HTMLElement {
 
         .volume {
           height: 40px;
-          padding: 0 18px 14px;
+          padding: 6px 18px 8px;
           box-sizing: border-box;
           display: grid;
           grid-template-columns: 28px 1fr;
@@ -1416,6 +1420,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           <summary>Playlists</summary>
           <div class="section details-body">
             ${this._input("Music Assistant config entry ID", this.config.music_assistant_config_entry_id, "")}
+            ${this._checkbox("Shuffle playlists", this.config.shuffle_playlists === true)}
             <button class="load-playlists" ${this.config.music_assistant_config_entry_id ? "" : "disabled"}>
               ${this._maPlaylistLoading ? "Loading..." : "Load Music Assistant playlists"}
             </button>
@@ -1472,6 +1477,11 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       this._maPlaylistOptions = [];
       this._playlistsOpen = true;
       this._setValue("music_assistant_config_entry_id", ev.target.value.trim());
+    });
+
+    this.shadowRoot.querySelector(".playlists-details .checkbox input")?.addEventListener("change", (ev) => {
+      this._playlistsOpen = true;
+      this._setValue("shuffle_playlists", ev.target.checked ? true : undefined);
     });
 
     this.shadowRoot.querySelectorAll(".player").forEach((playerEl) => {
