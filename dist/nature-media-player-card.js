@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.24";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.25";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -14,7 +14,7 @@ class NatureMediaPlayerCard extends HTMLElement {
   static getStubConfig() {
     return {
       players: [
-        { entity: "media_player.kjokken", name: "Kjokken", icon: "mdi:stove", option: "Kjokken" },
+        { entity: "media_player.kjokken", icon: "mdi:stove" },
       ],
     };
   }
@@ -313,7 +313,7 @@ class NatureMediaPlayerCard extends HTMLElement {
         const playerState = this._hass?.states?.[player.entity];
         const active = playerState?.state === "playing" ? " active" : "";
         const playerName =
-          player.name || player.option || playerState?.attributes?.friendly_name || player.entity;
+          player.name || playerState?.attributes?.friendly_name || player.option || player.entity;
         return `
           <button class="choice${selected}${active}" data-player="${player.entity}">
             <span class="choice-icon">
@@ -808,6 +808,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     this._maPlaylistOptions = [];
     this._maPlaylistLoading = false;
     this._maPlaylistError = "";
+    this._playlistsOpen = false;
     this.attachShadow({ mode: "open" });
   }
 
@@ -929,11 +930,13 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
   }
 
   _addPlaylist() {
+    this._playlistsOpen = true;
     const playlists = [...(this.config.playlists || [])];
     const option = this._maPlaylistOptions[0] || {};
     playlists.push({
       media_id: option.media_id || "",
-      name: option.name || "",
+      title: option.name || "",
+      name: "",
       icon: "mdi:playlist-music",
     });
     this._fireConfigChanged({ ...this.config, playlists });
@@ -1026,6 +1029,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     const configEntryId = this.config.music_assistant_config_entry_id;
     if (!configEntryId || !this._hass || this._maPlaylistLoading) return;
 
+    this._playlistsOpen = true;
     this._maPlaylistLoading = true;
     this._maPlaylistError = "";
     this._render();
@@ -1103,7 +1107,8 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     playlists[index] = {
       ...(playlists[index] || {}),
       media_id: mediaId,
-      name: playlists[index]?.name || option.name || "",
+      title: option.name || playlists[index]?.title || "",
+      name: playlists[index]?.name || "",
     };
     delete playlists[index].source;
     this._fireConfigChanged({ ...this.config, playlists });
@@ -1407,7 +1412,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           <button class="add-player">Add Player</button>
         </div>
 
-        <details>
+        <details class="playlists-details" ${this._playlistsOpen ? "open" : ""}>
           <summary>Playlists</summary>
           <div class="section details-body">
             ${this._input("Music Assistant config entry ID", this.config.music_assistant_config_entry_id, "")}
@@ -1430,7 +1435,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
                             </div>
                             <div class="grid">
                               ${this._playlistSelect("Playlist", playlist.media_id || playlist.source, playlistOptions)}
-                              ${this._input("Name (Optional)", playlist.name, "Uses the source name")}
+                              ${this._input("Name (Optional)", playlist.name, "Uses the playlist name")}
                               ${this._iconPicker("Icon", playlist.icon || "mdi:playlist-music")}
                             </div>
                           </div>
@@ -1459,8 +1464,13 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     generalInputs[0]?.addEventListener("change", (ev) => this._setValue("empty_title", ev.target.value.trim()));
     generalInputs[1]?.addEventListener("change", (ev) => this._setValue("show_volume", ev.target.checked ? undefined : false));
 
-    this.shadowRoot.querySelector("details .details-body input")?.addEventListener("change", (ev) => {
+    this.shadowRoot.querySelector(".playlists-details")?.addEventListener("toggle", (ev) => {
+      this._playlistsOpen = ev.currentTarget.open;
+    });
+
+    this.shadowRoot.querySelector(".playlists-details .details-body input")?.addEventListener("change", (ev) => {
       this._maPlaylistOptions = [];
+      this._playlistsOpen = true;
       this._setValue("music_assistant_config_entry_id", ev.target.value.trim());
     });
 
@@ -1508,14 +1518,17 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       const index = Number(playlistEl.dataset.index);
 
       playlistEl.querySelector(".playlist-source")?.addEventListener("change", (ev) => {
+        this._playlistsOpen = true;
         this._setPlaylistFromOption(index, ev.target.value);
       });
 
       playlistEl.querySelector("input")?.addEventListener("change", (ev) => {
+        this._playlistsOpen = true;
         this._setPlaylist(index, "name", ev.target.value.trim());
       });
 
       playlistEl.querySelector(".icon-picker")?.addEventListener("value-changed", (ev) => {
+        this._playlistsOpen = true;
         this._setPlaylist(index, "icon", ev.detail?.value || "");
       });
     });
@@ -1525,7 +1538,10 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     });
 
     this.shadowRoot.querySelectorAll(".remove-playlist").forEach((button) => {
-      button.addEventListener("click", (ev) => this._removePlaylist(Number(ev.currentTarget.dataset.index)));
+      button.addEventListener("click", (ev) => {
+        this._playlistsOpen = true;
+        this._removePlaylist(Number(ev.currentTarget.dataset.index));
+      });
     });
 
     this.shadowRoot.querySelector(".add-player")?.addEventListener("click", () => this._addPlayer());
