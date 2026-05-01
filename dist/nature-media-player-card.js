@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.27";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.28";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -1415,6 +1415,19 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           gap: 10px;
         }
 
+        .playlist-grid {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        }
+
+        .playlist-grid label:has(.icon-picker) {
+          max-width: 240px;
+        }
+
+        .playlist-grid .checkbox {
+          align-self: end;
+          min-width: 0;
+        }
+
         button {
           border: 0;
           border-radius: 10px;
@@ -1506,7 +1519,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
                                 <ha-icon icon="mdi:trash-can-outline"></ha-icon>
                               </button>
                             </div>
-                            <div class="grid">
+                            <div class="grid playlist-grid">
                               ${this._playlistSelect("Playlist", playlist.media_id || playlist.source, playlistOptions)}
                               ${this._input("Name (Optional)", playlist.name, "Uses the playlist name")}
                               ${this._iconPicker("Icon", playlist.icon || "mdi:playlist-music")}
