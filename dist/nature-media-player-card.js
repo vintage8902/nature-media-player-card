@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.32";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.33";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -218,7 +218,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       media_id: mediaId,
       media_type: "playlist",
     };
-    const shuffle = playlist?.shuffle === true || this.config.shuffle_playlists === true;
+    const shuffle = playlist?.shuffle === true;
 
     if (!shuffle) {
       await this._hass.callService("media_player", "shuffle_set", { shuffle: false }, { entity_id: entityId });
