@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.35";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.36";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -693,6 +693,17 @@ class NatureMediaPlayerCard extends HTMLElement {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+        }
+
+        .playlist-choice .choice-name {
+          max-width: 82px;
+          min-height: 26px;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          white-space: normal;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
       </style>
 
