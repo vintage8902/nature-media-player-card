@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.31";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.32";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -209,7 +209,7 @@ class NatureMediaPlayerCard extends HTMLElement {
     );
   }
 
-  _playMusicAssistantPlaylist(playlist) {
+  async _playMusicAssistantPlaylist(playlist) {
     const entityId = this._getActiveEntityId();
     const mediaId = playlist?.media_id || playlist?.source;
     if (!entityId || !mediaId) return;
@@ -221,10 +221,11 @@ class NatureMediaPlayerCard extends HTMLElement {
     const shuffle = playlist?.shuffle === true || this.config.shuffle_playlists === true;
 
     if (!shuffle) {
-      this._hass.callService("media_player", "shuffle_set", { shuffle: false }, { entity_id: entityId });
+      await this._hass.callService("media_player", "shuffle_set", { shuffle: false }, { entity_id: entityId });
+      await new Promise((resolve) => setTimeout(resolve, 350));
     }
 
-    this._hass.callService("music_assistant", "play_media", data, { entity_id: entityId });
+    await this._hass.callService("music_assistant", "play_media", data, { entity_id: entityId });
 
     if (shuffle) {
       this._hass.callService("media_player", "shuffle_set", { shuffle: true }, { entity_id: entityId });
