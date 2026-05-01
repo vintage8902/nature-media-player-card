@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.23";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.24";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -1375,7 +1375,6 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         <div class="section">
           <h3>General</h3>
           ${this._input("Empty title", this.config.empty_title, "Ingen media")}
-          ${this._input("Music Assistant config entry ID", this.config.music_assistant_config_entry_id, "")}
           ${this._checkbox("Show volume", this.config.show_volume !== false)}
         </div>
 
@@ -1408,39 +1407,42 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           <button class="add-player">Add Player</button>
         </div>
 
-        <div class="section">
-          <h3>Playlists</h3>
-          <button class="load-playlists" ${this.config.music_assistant_config_entry_id ? "" : "disabled"}>
-            ${this._maPlaylistLoading ? "Loading..." : "Load Music Assistant playlists"}
-          </button>
-          ${this._maPlaylistError ? `<p>${this._escape(this._maPlaylistError)}</p>` : ""}
-          ${
-            playlistOptions.length
-              ? playlists.length
-                ? playlists
-                    .map(
-                      (playlist, index) => `
-                        <div class="playlist-editor" data-index="${index}">
-                          <div class="player-head">
-                            <span>Playlist ${index + 1}</span>
-                            <button class="ghost icon-button remove-playlist" data-index="${index}" aria-label="Remove playlist">
-                              <ha-icon icon="mdi:trash-can-outline"></ha-icon>
-                            </button>
+        <details>
+          <summary>Playlists</summary>
+          <div class="section details-body">
+            ${this._input("Music Assistant config entry ID", this.config.music_assistant_config_entry_id, "")}
+            <button class="load-playlists" ${this.config.music_assistant_config_entry_id ? "" : "disabled"}>
+              ${this._maPlaylistLoading ? "Loading..." : "Load Music Assistant playlists"}
+            </button>
+            ${this._maPlaylistError ? `<p>${this._escape(this._maPlaylistError)}</p>` : ""}
+            ${
+              playlistOptions.length
+                ? playlists.length
+                  ? playlists
+                      .map(
+                        (playlist, index) => `
+                          <div class="playlist-editor" data-index="${index}">
+                            <div class="player-head">
+                              <span>Playlist ${index + 1}</span>
+                              <button class="ghost icon-button remove-playlist" data-index="${index}" aria-label="Remove playlist">
+                                <ha-icon icon="mdi:trash-can-outline"></ha-icon>
+                              </button>
+                            </div>
+                            <div class="grid">
+                              ${this._playlistSelect("Playlist", playlist.media_id || playlist.source, playlistOptions)}
+                              ${this._input("Name (Optional)", playlist.name, "Uses the source name")}
+                              ${this._iconPicker("Icon", playlist.icon || "mdi:playlist-music")}
+                            </div>
                           </div>
-                          <div class="grid">
-                            ${this._playlistSelect("Playlist", playlist.media_id || playlist.source, playlistOptions)}
-                            ${this._input("Name (Optional)", playlist.name, "Uses the source name")}
-                            ${this._iconPicker("Icon", playlist.icon || "mdi:playlist-music")}
-                          </div>
-                        </div>
-                      `,
-                    )
-                    .join("")
-                : `<p>No playlists yet.</p>`
-              : `<p>Load playlists from Music Assistant before adding one.</p>`
-          }
-          <button class="add-playlist" ${playlistOptions.length ? "" : "disabled"}>Add Playlist</button>
-        </div>
+                        `,
+                      )
+                      .join("")
+                  : `<p>No playlists yet.</p>`
+                : `<p>Load playlists from Music Assistant before adding one.</p>`
+            }
+            <button class="add-playlist" ${playlistOptions.length ? "" : "disabled"}>Add Playlist</button>
+          </div>
+        </details>
 
         <details>
           <summary>Colors</summary>
@@ -1455,11 +1457,12 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
     const generalInputs = this.shadowRoot.querySelectorAll(".section:first-child input");
     generalInputs[0]?.addEventListener("change", (ev) => this._setValue("empty_title", ev.target.value.trim()));
-    generalInputs[1]?.addEventListener("change", (ev) => {
+    generalInputs[1]?.addEventListener("change", (ev) => this._setValue("show_volume", ev.target.checked ? undefined : false));
+
+    this.shadowRoot.querySelector("details .details-body input")?.addEventListener("change", (ev) => {
       this._maPlaylistOptions = [];
       this._setValue("music_assistant_config_entry_id", ev.target.value.trim());
     });
-    generalInputs[2]?.addEventListener("change", (ev) => this._setValue("show_volume", ev.target.checked ? undefined : false));
 
     this.shadowRoot.querySelectorAll(".player").forEach((playerEl) => {
       const index = Number(playerEl.dataset.index);
