@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.49";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.50";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -252,6 +252,36 @@ class NatureMediaPlayerCard extends HTMLElement {
     };
   }
 
+  _getSpotifyPlusRepeatState(repeat) {
+    if (repeat === "one" || repeat === "track") return "track";
+    if (repeat === "all" || repeat === "context") return "context";
+    return "off";
+  }
+
+  async _callSpotifyPlusShuffleRepeat(entityId, deviceId, shuffle, repeat) {
+    if (!entityId) return;
+
+    const shuffleData = {
+      entity_id: entityId,
+      state: shuffle,
+      delay: 0.5,
+    };
+    const repeatData = {
+      entity_id: entityId,
+      state: this._getSpotifyPlusRepeatState(repeat),
+      delay: 0.5,
+    };
+
+    if (deviceId) {
+      shuffleData.device_id = deviceId;
+      repeatData.device_id = deviceId;
+    }
+
+    await this._hass.callService("spotifyplus", "player_set_repeat_mode", repeatData);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await this._hass.callService("spotifyplus", "player_set_shuffle_mode", shuffleData);
+  }
+
   _getNextShuffleRepeatMode(mode) {
     if (mode === "off") return "shuffle";
     if (mode === "shuffle") return "repeat";
@@ -274,9 +304,18 @@ class NatureMediaPlayerCard extends HTMLElement {
     const { shuffle, repeat } = this._getShuffleRepeatSettings(nextMode);
     this._shuffleRepeatMode = nextMode;
 
-    await this._hass.callService("media_player", "repeat_set", { repeat }, { entity_id: entityId });
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    await this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: entityId });
+    const activePlayer = this._getConfiguredPlayer(entityId);
+    const sourceName = activePlayer.spotify_source_name || activePlayer.source_name;
+    const spotifyEntityId = this.config.spotify_entity || this.config.spotify_player_entity;
+
+    if (spotifyEntityId && sourceName) {
+      await this._callSpotifyPlusShuffleRepeat(spotifyEntityId, sourceName, shuffle, repeat);
+    } else {
+      await this._hass.callService("media_player", "repeat_set", { repeat }, { entity_id: entityId });
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      await this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: entityId });
+    }
+
     this._render();
   }
 
@@ -340,8 +379,8 @@ class NatureMediaPlayerCard extends HTMLElement {
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
 
-    await this._hass.callService("media_player", "repeat_set", { repeat }, { entity_id: spotifyEntityId });
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await this._callSpotifyPlusShuffleRepeat(spotifyEntityId, sourceName, shuffle, repeat);
+    await new Promise((resolve) => setTimeout(resolve, 250));
     await this._hass.callService(
       "media_player",
       "play_media",
@@ -351,8 +390,6 @@ class NatureMediaPlayerCard extends HTMLElement {
       },
       { entity_id: spotifyEntityId },
     );
-    await new Promise((resolve) => setTimeout(resolve, 350));
-    this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: spotifyEntityId });
   }
 
   _selectPlayer(player) {
