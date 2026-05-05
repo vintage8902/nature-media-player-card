@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.47";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.48";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -431,17 +431,21 @@ class NatureMediaPlayerCard extends HTMLElement {
     const spotifyPlaylists = Array.isArray(this.config.spotify_playlists)
       ? this.config.spotify_playlists.filter((item) => item?.playlist_url || item?.media_content_id || item?.media_id)
       : [];
-    const allPlaylists = [...playlists, ...spotifyPlaylists];
     const hasExplicitPlaylistSetting = this.config.players.some((player) =>
       Object.prototype.hasOwnProperty.call(player, "show_playlists"),
     );
     const activePlayerConfig = this._getConfiguredPlayer(data.activeEntity);
+    const activePlayerHasSpotifySource = Boolean(
+      activePlayerConfig.spotify_source_name || activePlayerConfig.source_name,
+    );
+    const availableSpotifyPlaylists = activePlayerHasSpotifySource ? spotifyPlaylists : [];
+    const allPlaylists = [...playlists, ...availableSpotifyPlaylists];
     const activePlayerAllowsPlaylists =
       activePlayerConfig.show_playlists === true ||
       (!hasExplicitPlaylistSetting && allPlaylists.length > 0);
     const showPlaylistToggle = allPlaylists.length > 0 && activePlayerAllowsPlaylists;
     if ((this._panel === "playlists" && (!showPlaylistToggle || !playlists.length))
-      || (this._panel === "spotify-playlists" && (!showPlaylistToggle || !spotifyPlaylists.length))) {
+      || (this._panel === "spotify-playlists" && (!showPlaylistToggle || !availableSpotifyPlaylists.length))) {
       this._panel = "controls";
     }
     const volumePct = Math.round(Math.max(0, Math.min(1, data.volume)) * 100);
@@ -453,7 +457,7 @@ class NatureMediaPlayerCard extends HTMLElement {
     const panelItems = this._panel === "playlists"
       ? playlists
       : this._panel === "spotify-playlists"
-        ? spotifyPlaylists
+        ? availableSpotifyPlaylists
         : this.config.players;
     const choiceColumns = Math.min(Math.max(panelItems.length || 1, 1), 4);
     const choiceRows = Math.max(1, Math.ceil((panelItems.length || 1) / choiceColumns));
@@ -512,7 +516,7 @@ class NatureMediaPlayerCard extends HTMLElement {
         `;
       })
       .join("");
-    const spotifyPlaylistChoices = spotifyPlaylists
+    const spotifyPlaylistChoices = availableSpotifyPlaylists
       .map((playlist, index) => {
         const id = playlist.playlist_url || playlist.media_content_id || playlist.media_id;
         const name = playlist.name || playlist.title || id;
@@ -994,7 +998,7 @@ class NatureMediaPlayerCard extends HTMLElement {
 
     this.shadowRoot.querySelector(".playlist-toggle")?.addEventListener("click", (ev) => {
       ev.stopPropagation();
-      this._panel = this._getNextPlaylistPanel(playlists, spotifyPlaylists);
+      this._panel = this._getNextPlaylistPanel(playlists, availableSpotifyPlaylists);
       this._render();
     });
 
@@ -1032,7 +1036,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       button.addEventListener("click", (ev) => {
         ev.stopPropagation();
         const type = ev.currentTarget.dataset.playlistType || "music-assistant";
-        const collection = type === "spotify" ? spotifyPlaylists : playlists;
+        const collection = type === "spotify" ? availableSpotifyPlaylists : playlists;
         this._selectPlaylist(collection[Number(ev.currentTarget.dataset.playlistIndex)], type);
       });
     });
