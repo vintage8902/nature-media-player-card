@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.39";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.40";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -44,7 +44,10 @@ class NatureMediaPlayerCard extends HTMLElement {
   }
 
   getCardSize() {
-    if (this._panel === "controls") return this.config?.show_volume === false ? 2 : 3;
+    if (this._panel === "controls") {
+      const baseSize = this.config?.show_volume === false ? 2 : 3;
+      return this.config?.show_cover_art === true ? baseSize + 2 : baseSize;
+    }
     const items = this._panel === "playlists"
       ? this.config?.playlists?.length || 1
       : this.config?.players?.length || 1;
@@ -302,7 +305,7 @@ class NatureMediaPlayerCard extends HTMLElement {
     const choiceRowHeight = playlistPanel ? 92 : 76;
     const choicesBaseHeight = playlistPanel ? 122 : 106;
     const extraChoiceHeight = Math.max(0, choiceRows - 1) * (choiceRowHeight + 6);
-    const coverArtHeight = showCoverArt ? 104 : 0;
+    const coverArtHeight = showCoverArt ? 148 : 0;
     const controlHeight = (showVolume ? 195 : 154) + coverArtHeight;
     const cardHeight = this._panel === "controls" ? controlHeight : 89 + choicesBaseHeight + extraChoiceHeight;
     const choicesHeight = choicesBaseHeight + extraChoiceHeight;
@@ -546,18 +549,19 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         .cover-art {
-          height: 104px;
-          padding: 0 18px 10px;
+          height: 148px;
+          padding: 0 18px 12px;
           box-sizing: border-box;
         }
 
         .cover-art img {
           width: 100%;
-          height: 94px;
+          height: 136px;
           display: block;
-          object-fit: cover;
+          object-fit: contain;
           border-radius: 18px;
           border: 1px solid var(--nmp-border);
+          background: rgba(16, 38, 30, 0.28);
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
         }
 
@@ -864,6 +868,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     this._maConfigEntriesLoading = false;
     this._playersOpen = true;
     this._playlistsOpen = false;
+    this._optionsOpen = false;
     this.attachShadow({ mode: "open" });
   }
 
@@ -1534,16 +1539,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         <div class="section">
           <h3>General</h3>
           ${this._input("Empty title", this.config.empty_title, "Ingen media")}
-          ${this._checkbox("Show volume", this.config.show_volume !== false)}
         </div>
-
-        <details class="cover-details">
-          <summary>Cover art</summary>
-          <div class="section details-body">
-            ${this._checkbox("Show cover art", this.config.show_cover_art === true)}
-            ${this._input("Cover art attribute", this.config.cover_art_attribute || "entity_picture", "entity_picture")}
-          </div>
-        </details>
 
         <details class="players-details" ${this._playersOpen ? "open" : ""}>
           <summary>Players</summary>
@@ -1614,6 +1610,15 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           </div>
         </details>
 
+        <details class="options-details" ${this._optionsOpen ? "open" : ""}>
+          <summary>Options</summary>
+          <div class="section details-body">
+            ${this._checkbox("Show volume", this.config.show_volume !== false)}
+            ${this._checkbox("Show cover art", this.config.show_cover_art === true)}
+            ${this._input("Cover art attribute", this.config.cover_art_attribute || "entity_picture", "entity_picture")}
+          </div>
+        </details>
+
         <details>
           <summary>Colors</summary>
           <div class="colors">
@@ -1627,11 +1632,24 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
     const generalInputs = this.shadowRoot.querySelectorAll(".editor > .section:first-child input");
     generalInputs[0]?.addEventListener("change", (ev) => this._setValue("empty_title", ev.target.value.trim()));
-    generalInputs[1]?.addEventListener("change", (ev) => this._setValue("show_volume", ev.target.checked ? undefined : false));
 
-    const coverInputs = this.shadowRoot.querySelectorAll(".cover-details input");
-    coverInputs[0]?.addEventListener("change", (ev) => this._setValue("show_cover_art", ev.target.checked ? true : undefined));
-    coverInputs[1]?.addEventListener("change", (ev) => this._setValue("cover_art_attribute", ev.target.value.trim() || undefined));
+    this.shadowRoot.querySelector(".options-details")?.addEventListener("toggle", (ev) => {
+      this._optionsOpen = ev.currentTarget.open;
+    });
+
+    const optionInputs = this.shadowRoot.querySelectorAll(".options-details input");
+    optionInputs[0]?.addEventListener("change", (ev) => {
+      this._optionsOpen = true;
+      this._setValue("show_volume", ev.target.checked ? undefined : false);
+    });
+    optionInputs[1]?.addEventListener("change", (ev) => {
+      this._optionsOpen = true;
+      this._setValue("show_cover_art", ev.target.checked ? true : undefined);
+    });
+    optionInputs[2]?.addEventListener("change", (ev) => {
+      this._optionsOpen = true;
+      this._setValue("cover_art_attribute", ev.target.value.trim() || undefined);
+    });
 
     this.shadowRoot.querySelector(".players-details")?.addEventListener("toggle", (ev) => {
       this._playersOpen = ev.currentTarget.open;
