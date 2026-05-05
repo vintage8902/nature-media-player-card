@@ -22,6 +22,7 @@ three-dot button.
 - Switch players manually with a built-in player picker
 - Optional Music Assistant playlist picker
 - Volume slider with mute/unmute support
+- Optional cover art between track info and controls
 - Visual Lovelace editor
 - Custom icons, names and colors
 
@@ -89,13 +90,15 @@ the card to that player. Active players are marked in the player picker.
 
 The card also includes a visual Lovelace editor for the common options:
 players, optional names, searchable media players and icons, empty title, volume
-visibility, and colors.
+visibility, optional cover art, playlists, and colors.
 
 ## Options
 
 ```yaml
 type: custom:nature-media-player-card
 show_volume: false
+show_cover_art: true
+cover_art_attribute: entity_picture
 music_assistant_config_entry_id: 01KQGB3DHD2S9Q2YAPJCWSTCYX
 shuffle_playlists: true
 players:
@@ -111,6 +114,11 @@ playlists:
 `show_volume` is optional and defaults to `true`. Set it to `false` if you want
 to hide the volume slider and use a shorter compact control layout. When volume
 is shown, tap the volume icon to mute or unmute the active player.
+
+`show_cover_art` is optional and defaults to `false`. Set it to `true` to show
+cover art between the title/artist and the controls. `cover_art_attribute`
+defaults to `entity_picture`, but can be changed if your media player exposes
+artwork through another attribute.
 
 ## Playlists*
 <em>*Playlist support requires Music Assistant</em>

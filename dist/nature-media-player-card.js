@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.38";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.39";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -27,6 +27,8 @@ class NatureMediaPlayerCard extends HTMLElement {
     this.config = {
       show_selector: false,
       show_volume: true,
+      show_cover_art: false,
+      cover_art_attribute: "entity_picture",
       ...config,
       players: Array.isArray(config.players) ? config.players : [],
       playlists: Array.isArray(config.playlists) ? config.playlists : [],
@@ -168,6 +170,7 @@ class NatureMediaPlayerCard extends HTMLElement {
 
     const attrs = source?.entity_id?.startsWith("sensor.") ? source.attributes || {} : player?.attributes || {};
     const playerAttrs = player?.attributes || {};
+    const coverAttribute = this.config.cover_art_attribute || "entity_picture";
 
     return {
       activeEntity,
@@ -178,6 +181,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       muted: Boolean(attrs.is_volume_muted ?? playerAttrs.is_volume_muted ?? false),
       icon: configured.icon || attrs.icon || this.config.icon || "mdi:speaker",
       name: configured.name || playerAttrs.friendly_name || activeEntity || "Mediaspiller",
+      coverArt: attrs[coverAttribute] || playerAttrs[coverAttribute] || "",
     };
   }
 
@@ -273,6 +277,7 @@ class NatureMediaPlayerCard extends HTMLElement {
     const data = this._getDisplayData();
     const playing = data.state === "playing";
     const showVolume = this.config.show_volume !== false;
+    const showCoverArt = this.config.show_cover_art === true && Boolean(data.coverArt);
     const playlists = Array.isArray(this.config.playlists)
       ? this.config.playlists.filter((item) => item?.media_id || item?.source)
       : [];
@@ -297,7 +302,8 @@ class NatureMediaPlayerCard extends HTMLElement {
     const choiceRowHeight = playlistPanel ? 92 : 76;
     const choicesBaseHeight = playlistPanel ? 122 : 106;
     const extraChoiceHeight = Math.max(0, choiceRows - 1) * (choiceRowHeight + 6);
-    const controlHeight = showVolume ? 195 : 154;
+    const coverArtHeight = showCoverArt ? 104 : 0;
+    const controlHeight = (showVolume ? 195 : 154) + coverArtHeight;
     const cardHeight = this._panel === "controls" ? controlHeight : 89 + choicesBaseHeight + extraChoiceHeight;
     const choicesHeight = choicesBaseHeight + extraChoiceHeight;
     const colors = {
@@ -539,6 +545,22 @@ class NatureMediaPlayerCard extends HTMLElement {
           text-overflow: ellipsis;
         }
 
+        .cover-art {
+          height: 104px;
+          padding: 0 18px 10px;
+          box-sizing: border-box;
+        }
+
+        .cover-art img {
+          width: 100%;
+          height: 94px;
+          display: block;
+          object-fit: cover;
+          border-radius: 18px;
+          border: 1px solid var(--nmp-border);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
         .controls {
           height: 66px;
           display: flex;
@@ -725,6 +747,15 @@ class NatureMediaPlayerCard extends HTMLElement {
             : this._panel === "playlists"
               ? `<div class="choices">${playlistChoices}</div>`
             : `
+              ${
+                showCoverArt
+                  ? `
+                    <div class="cover-art">
+                      <img src="${this._escape(data.coverArt)}" alt="">
+                    </div>
+                  `
+                  : ""
+              }
               <div class="controls">
                 <button class="control previous" aria-label="Forrige"><ha-icon icon="mdi:skip-previous"></ha-icon></button>
                 <button class="control play" aria-label="Spill av eller pause"><ha-icon icon="${playing ? "mdi:pause" : "mdi:play"}"></ha-icon></button>
@@ -848,6 +879,8 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       playlists: [],
       colors: {},
       show_volume: true,
+      show_cover_art: false,
+      cover_art_attribute: "entity_picture",
       ...config,
     };
     this._render();
@@ -1504,6 +1537,14 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           ${this._checkbox("Show volume", this.config.show_volume !== false)}
         </div>
 
+        <details class="cover-details">
+          <summary>Cover art</summary>
+          <div class="section details-body">
+            ${this._checkbox("Show cover art", this.config.show_cover_art === true)}
+            ${this._input("Cover art attribute", this.config.cover_art_attribute || "entity_picture", "entity_picture")}
+          </div>
+        </details>
+
         <details class="players-details" ${this._playersOpen ? "open" : ""}>
           <summary>Players</summary>
           <div class="section details-body">
@@ -1587,6 +1628,10 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     const generalInputs = this.shadowRoot.querySelectorAll(".editor > .section:first-child input");
     generalInputs[0]?.addEventListener("change", (ev) => this._setValue("empty_title", ev.target.value.trim()));
     generalInputs[1]?.addEventListener("change", (ev) => this._setValue("show_volume", ev.target.checked ? undefined : false));
+
+    const coverInputs = this.shadowRoot.querySelectorAll(".cover-details input");
+    coverInputs[0]?.addEventListener("change", (ev) => this._setValue("show_cover_art", ev.target.checked ? true : undefined));
+    coverInputs[1]?.addEventListener("change", (ev) => this._setValue("cover_art_attribute", ev.target.value.trim() || undefined));
 
     this.shadowRoot.querySelector(".players-details")?.addEventListener("toggle", (ev) => {
       this._playersOpen = ev.currentTarget.open;
