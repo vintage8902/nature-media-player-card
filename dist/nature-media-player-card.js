@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.40";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.41";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -305,7 +305,7 @@ class NatureMediaPlayerCard extends HTMLElement {
     const choiceRowHeight = playlistPanel ? 92 : 76;
     const choicesBaseHeight = playlistPanel ? 122 : 106;
     const extraChoiceHeight = Math.max(0, choiceRows - 1) * (choiceRowHeight + 6);
-    const coverArtHeight = showCoverArt ? 148 : 0;
+    const coverArtHeight = showCoverArt ? 172 : 0;
     const controlHeight = (showVolume ? 195 : 154) + coverArtHeight;
     const cardHeight = this._panel === "controls" ? controlHeight : 89 + choicesBaseHeight + extraChoiceHeight;
     const choicesHeight = choicesBaseHeight + extraChoiceHeight;
@@ -549,19 +549,19 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         .cover-art {
-          height: 148px;
+          height: 172px;
           padding: 0 18px 12px;
           box-sizing: border-box;
         }
 
         .cover-art img {
           width: 100%;
-          height: 136px;
+          height: 160px;
           display: block;
           object-fit: contain;
           border-radius: 18px;
           border: 1px solid var(--nmp-border);
-          background: rgba(16, 38, 30, 0.28);
+          background: var(--nmp-surface);
           box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
         }
 
