@@ -159,10 +159,11 @@ the active player after starting playback.
 Spotify playlists can be added with `spotify_playlists`. Set `spotify_entity`
 to your Spotify media player, then add `spotify_source_name` on each player
 that should receive Spotify playback. Spotify playlists are only shown when the
-active player has a Spotify source name. Use a Spotify playlist ID, Spotify URI,
-or playlist URL in `playlist_url`. When a Spotify playlist is selected, the card
-first calls `media_player.select_source` on `spotify_entity`, then starts the
-playlist with `media_player.play_media`.
+active player has a Spotify source name, even if Music Assistant playlists are
+not enabled for that player. Use a Spotify playlist ID, Spotify URI, or playlist
+URL in `playlist_url`. When a Spotify playlist is selected, the card first calls
+`media_player.select_source` on `spotify_entity`, then starts the playlist with
+`media_player.play_media`.
 
 The playlist button cycles through Music Assistant playlists first, then
 Spotify playlists, then back to the controls. Empty playlist groups are skipped
