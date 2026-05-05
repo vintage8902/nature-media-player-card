@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.43";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.44";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -35,6 +35,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       playlists: Array.isArray(config.playlists) ? config.playlists : [],
     };
     this._panel = "controls";
+    this._shuffleRepeatMode = null;
     this.attachShadow({ mode: "open" });
     this._render();
   }
@@ -236,6 +237,24 @@ class NatureMediaPlayerCard extends HTMLElement {
     return "off";
   }
 
+  _getDesiredShuffleRepeatMode(data) {
+    return this._shuffleRepeatMode || this._getShuffleRepeatMode(data);
+  }
+
+  _getShuffleRepeatSettings(mode) {
+    return {
+      shuffle: mode === "shuffle" || mode === "both",
+      repeat: mode === "repeat" || mode === "both" ? "all" : "off",
+    };
+  }
+
+  _getNextShuffleRepeatMode(mode) {
+    if (mode === "off") return "shuffle";
+    if (mode === "shuffle") return "repeat";
+    if (mode === "repeat") return "both";
+    return "off";
+  }
+
   _getShuffleRepeatIcon(mode) {
     if (mode === "both") return "mdi:all-inclusive";
     if (mode === "repeat") return "mdi:repeat";
@@ -247,24 +266,14 @@ class NatureMediaPlayerCard extends HTMLElement {
     const entityId = this._getActiveEntityId();
     if (!entityId) return;
 
-    const mode = this._getShuffleRepeatMode(data);
-    let shuffle = true;
-    let repeat = "off";
-
-    if (mode === "shuffle") {
-      shuffle = false;
-      repeat = "all";
-    } else if (mode === "repeat") {
-      shuffle = true;
-      repeat = "all";
-    } else if (mode === "both") {
-      shuffle = false;
-      repeat = "off";
-    }
+    const nextMode = this._getNextShuffleRepeatMode(this._getDesiredShuffleRepeatMode(data));
+    const { shuffle, repeat } = this._getShuffleRepeatSettings(nextMode);
+    this._shuffleRepeatMode = nextMode;
 
     await this._hass.callService("media_player", "repeat_set", { repeat }, { entity_id: entityId });
     await new Promise((resolve) => setTimeout(resolve, 150));
-    this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: entityId });
+    await this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: entityId });
+    this._render();
   }
 
   async _playMusicAssistantPlaylist(playlist) {
@@ -276,10 +285,14 @@ class NatureMediaPlayerCard extends HTMLElement {
       media_id: mediaId,
       media_type: "playlist",
     };
-    const shuffle = this.config.shuffle_playlists === true;
+    const displayData = this._getDisplayData();
+    const mode = this.config.show_shuffle_repeat === true
+      ? this._getDesiredShuffleRepeatMode(displayData)
+      : this.config.shuffle_playlists === true ? "shuffle" : "off";
+    const { shuffle, repeat } = this._getShuffleRepeatSettings(mode);
 
-    await this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: entityId });
-    await new Promise((resolve) => setTimeout(resolve, 350));
+    await this._hass.callService("media_player", "repeat_set", { repeat }, { entity_id: entityId });
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     await this._hass.callService("music_assistant", "play_media", data, { entity_id: entityId });
     await new Promise((resolve) => setTimeout(resolve, 350));
@@ -349,7 +362,7 @@ class NatureMediaPlayerCard extends HTMLElement {
     }
     const volumePct = Math.round(Math.max(0, Math.min(1, data.volume)) * 100);
     const volumeIcon = data.muted ? "mdi:volume-off" : "mdi:volume-high";
-    const shuffleRepeatMode = this._getShuffleRepeatMode(data);
+    const shuffleRepeatMode = this._getDesiredShuffleRepeatMode(data);
     const shuffleRepeatIcon = this._getShuffleRepeatIcon(shuffleRepeatMode);
     const titleIsLong = String(data.title || "").length > 40;
     const playlistPanel = this._panel === "playlists";
@@ -623,8 +636,9 @@ class NatureMediaPlayerCard extends HTMLElement {
 
         .controls {
           height: 66px;
+          position: relative;
           display: grid;
-          grid-template-columns: 40px 56px 40px 40px;
+          grid-template-columns: 40px 56px 40px;
           align-items: center;
           justify-content: center;
           column-gap: 24px;
@@ -661,7 +675,10 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         .shuffle-repeat {
-          grid-column: 4;
+          position: absolute;
+          left: calc(50% + 116px);
+          top: 50%;
+          transform: translateY(-50%);
         }
 
         .shuffle-repeat.active {
