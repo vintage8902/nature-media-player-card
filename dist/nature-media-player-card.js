@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.46";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.47";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -1984,8 +1984,9 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         this._setPlayer(index, "entity", directEntity);
       });
       entityOptions.forEach((option) => {
-        option.addEventListener("click", (ev) => {
+        option.addEventListener("pointerdown", (ev) => {
           ev.preventDefault();
+          ev.stopPropagation();
           this._setPlayer(index, "entity", ev.currentTarget.dataset.entity);
         });
       });
@@ -2023,8 +2024,9 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         this._setValue("spotify_entity", directEntity);
       });
       entityOptions.forEach((option) => {
-        option.addEventListener("click", (ev) => {
+        option.addEventListener("pointerdown", (ev) => {
           ev.preventDefault();
+          ev.stopPropagation();
           this._spotifyPlaylistsOpen = true;
           this._setValue("spotify_entity", ev.currentTarget.dataset.entity);
         });
