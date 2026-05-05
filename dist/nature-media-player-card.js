@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.50";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.51";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -342,23 +342,20 @@ class NatureMediaPlayerCard extends HTMLElement {
     this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: entityId });
   }
 
-  _normalizeSpotifyPlaylistUrl(value) {
+  _normalizeSpotifyPlaylistUri(value) {
     const raw = String(value || "").trim();
     if (!raw) return "";
     const urlMatch = raw.match(/playlist\/([A-Za-z0-9]+)/);
-    if (urlMatch?.[1]) return `https://open.spotify.com/playlist/${urlMatch[1]}`;
-    if (raw.startsWith("spotify:playlist:")) {
-      return `https://open.spotify.com/playlist/${raw.replace("spotify:playlist:", "")}`;
-    }
-    if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-    return `https://open.spotify.com/playlist/${raw}`;
+    if (urlMatch?.[1]) return `spotify:playlist:${urlMatch[1]}`;
+    if (raw.startsWith("spotify:playlist:")) return raw;
+    return `spotify:playlist:${raw}`;
   }
 
   async _playSpotifyPlaylist(playlist) {
     const activeEntityId = this._getActiveEntityId();
     const spotifyEntityId = this.config.spotify_entity || this.config.spotify_player_entity;
-    const mediaContentId = this._normalizeSpotifyPlaylistUrl(playlist?.playlist_url || playlist?.media_content_id || playlist?.media_id);
-    if (!spotifyEntityId || !mediaContentId) return;
+    const contextUri = this._normalizeSpotifyPlaylistUri(playlist?.playlist_url || playlist?.media_content_id || playlist?.media_id);
+    if (!spotifyEntityId || !contextUri) return;
 
     const activePlayer = this._getConfiguredPlayer(activeEntityId);
     const sourceName = activePlayer.spotify_source_name || activePlayer.source_name || activePlayer.name;
@@ -369,26 +366,19 @@ class NatureMediaPlayerCard extends HTMLElement {
       : this.config.shuffle_playlists === true ? "shuffle" : "off";
     const { shuffle, repeat } = this._getShuffleRepeatSettings(mode);
 
-    if (sourceName) {
-      await this._hass.callService(
-        "media_player",
-        "select_source",
-        { source: sourceName },
-        { entity_id: spotifyEntityId },
-      );
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    }
-
     await this._callSpotifyPlusShuffleRepeat(spotifyEntityId, sourceName, shuffle, repeat);
     await new Promise((resolve) => setTimeout(resolve, 250));
     await this._hass.callService(
-      "media_player",
-      "play_media",
+      "spotifyplus",
+      "player_media_play_context",
       {
-        media_content_id: mediaContentId,
-        media_content_type: "playlist",
+        entity_id: spotifyEntityId,
+        context_uri: contextUri,
+        device_id: sourceName || "*",
+        shuffle,
+        offset_position: 0,
+        delay: 0.5,
       },
-      { entity_id: spotifyEntityId },
     );
   }
 
