@@ -103,10 +103,12 @@ show_shuffle_repeat: true
 show_cover_art: true
 cover_art_attribute: entity_picture
 music_assistant_config_entry_id: 01KQGB3DHD2S9Q2YAPJCWSTCYX
+spotify_entity: media_player.spotify
 shuffle_playlists: true
 players:
   - entity: media_player.kjokken
     icon: mdi:stove
+    spotify_source_name: Kjøkken
     show_playlists: true
 playlists:
   - media_id: library://playlist/example
@@ -154,10 +156,16 @@ playlists for this player** on the players that should expose them.
 Set `shuffle_playlists: true` if playlist selections should enable shuffle on
 the active player after starting playback.
 
-Spotify playlists can be added with `spotify_playlists`. Use a Spotify playlist
-ID, Spotify URI, or playlist URL in `playlist_url`. The playlist button cycles
-through Music Assistant playlists first, then Spotify playlists, then back to
-the controls. Empty playlist groups are skipped automatically.
+Spotify playlists can be added with `spotify_playlists`. Set `spotify_entity`
+to your Spotify media player, then add `spotify_source_name` on each player
+that should receive Spotify playback. Use a Spotify playlist ID, Spotify URI,
+or playlist URL in `playlist_url`. When a Spotify playlist is selected, the
+card first calls `media_player.select_source` on `spotify_entity`, then starts
+the playlist with `media_player.play_media`.
+
+The playlist button cycles through Music Assistant playlists first, then
+Spotify playlists, then back to the controls. Empty playlist groups are skipped
+automatically.
 
 ## Colors
 

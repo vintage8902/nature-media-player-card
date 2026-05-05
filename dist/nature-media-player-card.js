@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.45";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.46";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -30,6 +30,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       show_cover_art: false,
       show_shuffle_repeat: false,
       cover_art_attribute: "entity_picture",
+      spotify_entity: "",
       ...config,
       players: Array.isArray(config.players) ? config.players : [],
       playlists: Array.isArray(config.playlists) ? config.playlists : [],
@@ -302,19 +303,26 @@ class NatureMediaPlayerCard extends HTMLElement {
     this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: entityId });
   }
 
-  _normalizeSpotifyPlaylistId(value) {
+  _normalizeSpotifyPlaylistUrl(value) {
     const raw = String(value || "").trim();
     if (!raw) return "";
     const urlMatch = raw.match(/playlist\/([A-Za-z0-9]+)/);
-    if (urlMatch?.[1]) return `spotify:playlist:${urlMatch[1]}`;
-    if (raw.startsWith("spotify:playlist:")) return raw;
-    return `spotify:playlist:${raw}`;
+    if (urlMatch?.[1]) return `https://open.spotify.com/playlist/${urlMatch[1]}`;
+    if (raw.startsWith("spotify:playlist:")) {
+      return `https://open.spotify.com/playlist/${raw.replace("spotify:playlist:", "")}`;
+    }
+    if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+    return `https://open.spotify.com/playlist/${raw}`;
   }
 
   async _playSpotifyPlaylist(playlist) {
-    const entityId = this._getActiveEntityId();
-    const mediaContentId = this._normalizeSpotifyPlaylistId(playlist?.playlist_url || playlist?.media_content_id || playlist?.media_id);
-    if (!entityId || !mediaContentId) return;
+    const activeEntityId = this._getActiveEntityId();
+    const spotifyEntityId = this.config.spotify_entity || this.config.spotify_player_entity;
+    const mediaContentId = this._normalizeSpotifyPlaylistUrl(playlist?.playlist_url || playlist?.media_content_id || playlist?.media_id);
+    if (!spotifyEntityId || !mediaContentId) return;
+
+    const activePlayer = this._getConfiguredPlayer(activeEntityId);
+    const sourceName = activePlayer.spotify_source_name || activePlayer.source_name || activePlayer.name;
 
     const displayData = this._getDisplayData();
     const mode = this.config.show_shuffle_repeat === true
@@ -322,7 +330,17 @@ class NatureMediaPlayerCard extends HTMLElement {
       : this.config.shuffle_playlists === true ? "shuffle" : "off";
     const { shuffle, repeat } = this._getShuffleRepeatSettings(mode);
 
-    await this._hass.callService("media_player", "repeat_set", { repeat }, { entity_id: entityId });
+    if (sourceName) {
+      await this._hass.callService(
+        "media_player",
+        "select_source",
+        { source: sourceName },
+        { entity_id: spotifyEntityId },
+      );
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+
+    await this._hass.callService("media_player", "repeat_set", { repeat }, { entity_id: spotifyEntityId });
     await new Promise((resolve) => setTimeout(resolve, 150));
     await this._hass.callService(
       "media_player",
@@ -331,10 +349,10 @@ class NatureMediaPlayerCard extends HTMLElement {
         media_content_id: mediaContentId,
         media_content_type: "playlist",
       },
-      { entity_id: entityId },
+      { entity_id: spotifyEntityId },
     );
     await new Promise((resolve) => setTimeout(resolve, 350));
-    this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: entityId });
+    this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: spotifyEntityId });
   }
 
   _selectPlayer(player) {
@@ -372,11 +390,11 @@ class NatureMediaPlayerCard extends HTMLElement {
     this._render();
   }
 
-  _getNextPlaylistPanel() {
-    const hasMusicAssistant = Array.isArray(this.config.playlists)
-      && this.config.playlists.some((item) => item?.media_id || item?.source);
-    const hasSpotify = Array.isArray(this.config.spotify_playlists)
-      && this.config.spotify_playlists.some((item) => item?.playlist_url || item?.media_content_id || item?.media_id);
+  _getNextPlaylistPanel(playlists = this.config.playlists, spotifyPlaylists = this.config.spotify_playlists) {
+    const hasMusicAssistant = Array.isArray(playlists)
+      && playlists.some((item) => item?.media_id || item?.source);
+    const hasSpotify = Array.isArray(spotifyPlaylists)
+      && spotifyPlaylists.some((item) => item?.playlist_url || item?.media_content_id || item?.media_id);
 
     if (this._panel === "controls") {
       if (hasMusicAssistant) return "playlists";
@@ -976,7 +994,7 @@ class NatureMediaPlayerCard extends HTMLElement {
 
     this.shadowRoot.querySelector(".playlist-toggle")?.addEventListener("click", (ev) => {
       ev.stopPropagation();
-      this._panel = this._getNextPlaylistPanel();
+      this._panel = this._getNextPlaylistPanel(playlists, spotifyPlaylists);
       this._render();
     });
 
@@ -1082,6 +1100,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       show_cover_art: false,
       show_shuffle_repeat: false,
       cover_art_attribute: "entity_picture",
+      spotify_entity: "",
       ...config,
     };
     this._render();
@@ -1203,6 +1222,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       entity: this._defaultPlayerEntity(),
       name: "",
       icon: "mdi:speaker",
+      spotify_source_name: "",
       show_playlists: false,
     });
     this._fireConfigChanged({ ...this.config, players });
@@ -1793,6 +1813,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
                             ${this._entityPicker("Entity", player.entity, index)}
                             ${this._input("Name (Optional)", player.name, "Uses the player name")}
                             ${this._iconPicker("Icon", player.icon)}
+                            ${this._input("Source name (for Spotify)", player.spotify_source_name, "Spotify source name")}
                             ${this._checkbox("Enable playlists for this player", player.show_playlists === true)}
                           </div>
                         </div>
@@ -1846,6 +1867,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         <details class="spotify-playlists-details" ${this._spotifyPlaylistsOpen ? "open" : ""}>
           <summary>Spotify Playlist</summary>
           <div class="section details-body">
+            ${this._entityPicker("Spotify entity", this.config.spotify_entity, "spotify")}
             ${
               spotifyPlaylists.length
                 ? spotifyPlaylists
@@ -1968,7 +1990,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         });
       });
 
-      const keys = ["name"];
+      const keys = ["name", "spotify_source_name"];
       playerEl.querySelectorAll("label:not(.checkbox) > input:not(.entity-input)").forEach((input, inputIndex) => {
         input.addEventListener("change", (ev) => this._setPlayer(index, keys[inputIndex], ev.target.value.trim()));
       });
@@ -1981,6 +2003,33 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
         this._setPlayer(index, "show_playlists", ev.target.checked ? true : undefined);
       });
     });
+
+    const spotifyEntityCombo = this.shadowRoot.querySelector(".spotify-playlists-details .entity-combo");
+    if (spotifyEntityCombo) {
+      const entityInput = spotifyEntityCombo.querySelector(".entity-input");
+      const entityOptions = spotifyEntityCombo.querySelectorAll(".entity-option");
+      entityInput?.addEventListener("focus", () => spotifyEntityCombo.classList.add("open"));
+      entityInput?.addEventListener("input", (ev) => {
+        spotifyEntityCombo.classList.add("open");
+        const query = ev.target.value.toLowerCase();
+        entityOptions.forEach((option) => {
+          option.hidden = !option.textContent.toLowerCase().includes(query);
+        });
+      });
+      entityInput?.addEventListener("change", (ev) => {
+        const value = ev.target.value.trim();
+        const directEntity = value.match(/(media_player\.[^) ]+)/)?.[1] || value;
+        this._spotifyPlaylistsOpen = true;
+        this._setValue("spotify_entity", directEntity);
+      });
+      entityOptions.forEach((option) => {
+        option.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          this._spotifyPlaylistsOpen = true;
+          this._setValue("spotify_entity", ev.currentTarget.dataset.entity);
+        });
+      });
+    }
 
     this.shadowRoot.querySelectorAll(".playlist-editor").forEach((playlistEl) => {
       if (playlistEl.classList.contains("spotify-playlist-editor")) return;
