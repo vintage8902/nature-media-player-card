@@ -21,6 +21,7 @@ three-dot button.
 - Automatically follows the latest active player
 - Switch players manually with a built-in player picker
 - Optional Music Assistant playlist picker
+- Optional Spotify playlist picker
 - Volume slider with mute/unmute support
 - Optional Shuffle/Repeat control
 - Optional cover art between track info and controls
@@ -111,6 +112,10 @@ playlists:
   - media_id: library://playlist/example
     name: Chill
     icon: mdi:leaf
+spotify_playlists:
+  - playlist_url: 6Rb7jA4nwb3BvKfTq9LfuH
+    name: Spotify Chill
+    icon: mdi:spotify
 ```
 
 `show_volume` is optional and defaults to `true`. Set it to `false` if you want
@@ -126,8 +131,7 @@ cover art between the title/artist and the controls. `cover_art_attribute`
 defaults to `entity_picture`, but can be changed if your media player exposes
 artwork through another attribute.
 
-## Playlists*
-<em>*Playlist support requires Music Assistant</em>
+## Playlists
 <p align="center">
   <img src="docs/images/playlists.png" alt="Nature Media Player Card preview">
 </p>
@@ -149,6 +153,11 @@ playlists for this player** on the players that should expose them.
 
 Set `shuffle_playlists: true` if playlist selections should enable shuffle on
 the active player after starting playback.
+
+Spotify playlists can be added with `spotify_playlists`. Use a Spotify playlist
+ID, Spotify URI, or playlist URL in `playlist_url`. The playlist button cycles
+through Music Assistant playlists first, then Spotify playlists, then back to
+the controls. Empty playlist groups are skipped automatically.
 
 ## Colors
 
