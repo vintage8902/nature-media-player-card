@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.51";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.52";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -282,6 +282,18 @@ class NatureMediaPlayerCard extends HTMLElement {
     await this._hass.callService("spotifyplus", "player_set_shuffle_mode", shuffleData);
   }
 
+  async _transferSpotifyPlayback(entityId, deviceId) {
+    if (!entityId || !deviceId) return;
+
+    await this._hass.callService("spotifyplus", "player_transfer_playback", {
+      entity_id: entityId,
+      device_id: deviceId,
+      play: true,
+      delay: 1,
+      force_activate_device: true,
+    });
+  }
+
   _getNextShuffleRepeatMode(mode) {
     if (mode === "off") return "shuffle";
     if (mode === "shuffle") return "repeat";
@@ -342,20 +354,23 @@ class NatureMediaPlayerCard extends HTMLElement {
     this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: entityId });
   }
 
-  _normalizeSpotifyPlaylistUri(value) {
+  _normalizeSpotifyPlaylistUrl(value) {
     const raw = String(value || "").trim();
     if (!raw) return "";
     const urlMatch = raw.match(/playlist\/([A-Za-z0-9]+)/);
-    if (urlMatch?.[1]) return `spotify:playlist:${urlMatch[1]}`;
-    if (raw.startsWith("spotify:playlist:")) return raw;
-    return `spotify:playlist:${raw}`;
+    if (urlMatch?.[1]) return `https://open.spotify.com/playlist/${urlMatch[1]}`;
+    if (raw.startsWith("spotify:playlist:")) {
+      return `https://open.spotify.com/playlist/${raw.replace("spotify:playlist:", "")}`;
+    }
+    if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+    return `https://open.spotify.com/playlist/${raw}`;
   }
 
   async _playSpotifyPlaylist(playlist) {
     const activeEntityId = this._getActiveEntityId();
     const spotifyEntityId = this.config.spotify_entity || this.config.spotify_player_entity;
-    const contextUri = this._normalizeSpotifyPlaylistUri(playlist?.playlist_url || playlist?.media_content_id || playlist?.media_id);
-    if (!spotifyEntityId || !contextUri) return;
+    const mediaContentId = this._normalizeSpotifyPlaylistUrl(playlist?.playlist_url || playlist?.media_content_id || playlist?.media_id);
+    if (!spotifyEntityId || !mediaContentId) return;
 
     const activePlayer = this._getConfiguredPlayer(activeEntityId);
     const sourceName = activePlayer.spotify_source_name || activePlayer.source_name || activePlayer.name;
@@ -366,19 +381,18 @@ class NatureMediaPlayerCard extends HTMLElement {
       : this.config.shuffle_playlists === true ? "shuffle" : "off";
     const { shuffle, repeat } = this._getShuffleRepeatSettings(mode);
 
+    await this._transferSpotifyPlayback(spotifyEntityId, sourceName);
+    await new Promise((resolve) => setTimeout(resolve, 500));
     await this._callSpotifyPlusShuffleRepeat(spotifyEntityId, sourceName, shuffle, repeat);
     await new Promise((resolve) => setTimeout(resolve, 250));
     await this._hass.callService(
-      "spotifyplus",
-      "player_media_play_context",
+      "media_player",
+      "play_media",
       {
-        entity_id: spotifyEntityId,
-        context_uri: contextUri,
-        device_id: sourceName || "*",
-        shuffle,
-        offset_position: 0,
-        delay: 0.5,
+        media_content_id: mediaContentId,
+        media_content_type: "playlist",
       },
+      { entity_id: spotifyEntityId },
     );
   }
 

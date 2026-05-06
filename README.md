@@ -161,10 +161,9 @@ to your Spotify media player, then add `spotify_source_name` on each player
 that should receive Spotify playback. Spotify playlists are only shown when the
 active player has a Spotify source name, even if Music Assistant playlists are
 not enabled for that player. Use a Spotify playlist ID, Spotify URI, or playlist
-URL in `playlist_url`. When a Spotify playlist is selected, the card starts it
-with `spotifyplus.player_media_play_context` using the configured Spotify source
-name as `device_id`. Shuffle and repeat for Spotify playback are handled with
-SpotifyPlus services.
+URL in `playlist_url`. When a Spotify playlist is selected, the card transfers
+Spotify playback to the configured source name, applies shuffle/repeat with
+SpotifyPlus services, and then starts the playlist on the Spotify media player.
 
 The playlist button cycles through Music Assistant playlists first, then
 Spotify playlists, then back to the controls. Empty playlist groups are skipped
