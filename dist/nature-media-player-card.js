@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.52";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.53";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -28,6 +28,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       show_selector: false,
       show_volume: true,
       show_cover_art: false,
+      cover_art_layout: "center",
       show_shuffle_repeat: false,
       cover_art_attribute: "entity_picture",
       spotify_entity: "",
@@ -465,6 +466,8 @@ class NatureMediaPlayerCard extends HTMLElement {
     const playing = data.state === "playing";
     const showVolume = this.config.show_volume !== false;
     const showCoverArt = this.config.show_cover_art === true && Boolean(data.coverArt);
+    const coverArtLayout = this.config.cover_art_layout === "left" ? "left" : "center";
+    const coverArtLeft = showCoverArt && coverArtLayout === "left";
     const showShuffleRepeat = this.config.show_shuffle_repeat === true;
     const playlists = Array.isArray(this.config.playlists)
       ? this.config.playlists.filter((item) => item?.media_id || item?.source)
@@ -506,8 +509,8 @@ class NatureMediaPlayerCard extends HTMLElement {
     const choiceRowHeight = playlistPanel ? 92 : 76;
     const choicesBaseHeight = playlistPanel ? 122 : 106;
     const extraChoiceHeight = Math.max(0, choiceRows - 1) * (choiceRowHeight + 6);
-    const coverArtHeight = showCoverArt ? 172 : 0;
-    const controlHeight = (showVolume ? 195 : 154) + coverArtHeight;
+    const coverArtHeight = showCoverArt && !coverArtLeft ? 172 : 0;
+    const controlHeight = coverArtLeft ? (showVolume ? 232 : 190) : (showVolume ? 195 : 154) + coverArtHeight;
     const cardHeight = this._panel === "controls" ? controlHeight : 89 + choicesBaseHeight + extraChoiceHeight;
     const choicesHeight = choicesBaseHeight + extraChoiceHeight;
     const colors = {
@@ -572,6 +575,35 @@ class NatureMediaPlayerCard extends HTMLElement {
         `;
       })
       .join("");
+    const controlsMarkup = `
+      <div class="controls">
+        <button class="control previous" aria-label="Forrige"><ha-icon icon="mdi:skip-previous"></ha-icon></button>
+        <button class="control play" aria-label="Spill av eller pause"><ha-icon icon="${playing ? "mdi:pause" : "mdi:play"}"></ha-icon></button>
+        <button class="control next" aria-label="Neste"><ha-icon icon="mdi:skip-next"></ha-icon></button>
+        ${
+          showShuffleRepeat
+            ? `<button class="control shuffle-repeat ${shuffleRepeatMode === "off" ? "" : "active"}" aria-label="Shuffle og repeat"><ha-icon icon="${shuffleRepeatIcon}"></ha-icon></button>`
+            : ""
+        }
+      </div>
+    `;
+    const volumeMarkup = showVolume
+      ? `
+        <div class="volume">
+          <button class="volume-button" aria-label="${data.muted ? "Unmute" : "Mute"}">
+            <ha-icon icon="${volumeIcon}"></ha-icon>
+          </button>
+          <input class="volume-slider" type="range" min="0" max="100" value="${volumePct}" />
+        </div>
+      `
+      : "";
+    const coverArtMarkup = showCoverArt
+      ? `
+        <div class="cover-art">
+          <img src="${this._escape(data.coverArt)}" alt="">
+        </div>
+      `
+      : "";
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -780,6 +812,88 @@ class NatureMediaPlayerCard extends HTMLElement {
           display: block;
           object-fit: contain;
           border-radius: 12px;
+        }
+
+        .cover-left-layout {
+          min-height: ${showVolume ? "170px" : "128px"};
+          padding: 8px 18px 16px;
+          box-sizing: border-box;
+          display: grid;
+          grid-template-columns: minmax(112px, 40%) minmax(0, 1fr);
+          gap: 18px;
+          align-items: center;
+        }
+
+        .cover-left-layout .cover-art {
+          height: auto;
+          padding: 0;
+          justify-content: flex-start;
+        }
+
+        .cover-left-layout .cover-art img {
+          width: 100%;
+          max-width: 150px;
+          max-height: ${showVolume ? "150px" : "118px"};
+          aspect-ratio: 1;
+          object-fit: cover;
+        }
+
+        .cover-left-actions {
+          display: grid;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .cover-left-actions .controls {
+          height: 66px;
+          grid-template-columns: 36px 54px 36px;
+          column-gap: 14px;
+          justify-content: center;
+        }
+
+        .cover-left-actions .control {
+          width: 36px;
+          height: 36px;
+        }
+
+        .cover-left-actions .play {
+          width: 54px;
+          height: 54px;
+        }
+
+        .cover-left-actions .shuffle-repeat {
+          position: static;
+          grid-column: 4;
+          transform: none;
+        }
+
+        .cover-left-actions .controls:has(.shuffle-repeat) {
+          grid-template-columns: 34px 52px 34px 34px;
+          column-gap: 8px;
+        }
+
+        .cover-left-actions .volume {
+          height: 40px;
+          padding: 0;
+        }
+
+        @media (max-width: 380px) {
+          .cover-left-layout {
+            grid-template-columns: minmax(88px, 36%) minmax(0, 1fr);
+            gap: 12px;
+            padding-left: 14px;
+            padding-right: 14px;
+          }
+
+          .cover-left-actions .controls {
+            grid-template-columns: 32px 48px 32px;
+            column-gap: 8px;
+          }
+
+          .cover-left-actions .controls:has(.shuffle-repeat) {
+            grid-template-columns: 30px 46px 30px 30px;
+            column-gap: 4px;
+          }
         }
 
         .controls {
@@ -993,39 +1107,25 @@ class NatureMediaPlayerCard extends HTMLElement {
             ? `<div class="choices">${choices}</div>`
             : this._panel === "playlists"
               ? `<div class="choices">${playlistChoices}</div>`
-              : this._panel === "spotify-playlists"
+            : this._panel === "spotify-playlists"
                 ? `<div class="choices">${spotifyPlaylistChoices}</div>`
             : `
               ${
-                showCoverArt
+                coverArtLeft
                   ? `
-                    <div class="cover-art">
-                      <img src="${this._escape(data.coverArt)}" alt="">
+                    <div class="cover-left-layout">
+                      ${coverArtMarkup}
+                      <div class="cover-left-actions">
+                        ${controlsMarkup}
+                        ${volumeMarkup}
+                      </div>
                     </div>
                   `
-                  : ""
-              }
-              <div class="controls">
-                <button class="control previous" aria-label="Forrige"><ha-icon icon="mdi:skip-previous"></ha-icon></button>
-                <button class="control play" aria-label="Spill av eller pause"><ha-icon icon="${playing ? "mdi:pause" : "mdi:play"}"></ha-icon></button>
-                <button class="control next" aria-label="Neste"><ha-icon icon="mdi:skip-next"></ha-icon></button>
-                ${
-                  showShuffleRepeat
-                    ? `<button class="control shuffle-repeat ${shuffleRepeatMode === "off" ? "" : "active"}" aria-label="Shuffle og repeat"><ha-icon icon="${shuffleRepeatIcon}"></ha-icon></button>`
-                    : ""
-                }
-              </div>
-              ${
-                showVolume
-                  ? `
-                    <div class="volume">
-                      <button class="volume-button" aria-label="${data.muted ? "Unmute" : "Mute"}">
-                        <ha-icon icon="${volumeIcon}"></ha-icon>
-                      </button>
-                      <input class="volume-slider" type="range" min="0" max="100" value="${volumePct}" />
-                    </div>
+                  : `
+                    ${coverArtMarkup}
+                    ${controlsMarkup}
+                    ${volumeMarkup}
                   `
-                  : ""
               }
             `
         }
@@ -1144,6 +1244,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       colors: {},
       show_volume: true,
       show_cover_art: false,
+      cover_art_layout: "center",
       show_shuffle_repeat: false,
       cover_art_attribute: "entity_picture",
       spotify_entity: "",
@@ -1332,6 +1433,25 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       <label class="checkbox">
         <input type="checkbox" ${checked ? "checked" : ""}>
         <span>${label}</span>
+      </label>
+    `;
+  }
+
+  _select(label, value, options) {
+    return `
+      <label>
+        <span>${label}</span>
+        <select>
+          ${options
+            .map(
+              (option) => `
+                <option value="${this._escape(option.value)}" ${option.value === value ? "selected" : ""}>
+                  ${this._escape(option.label)}
+                </option>
+              `,
+            )
+            .join("")}
+        </select>
       </label>
     `;
   }
@@ -1947,6 +2067,10 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
             ${this._checkbox("Show volume", this.config.show_volume !== false)}
             ${this._checkbox("Show Shuffle/Repeat", this.config.show_shuffle_repeat === true)}
             ${this._checkbox("Show cover art", this.config.show_cover_art === true)}
+            ${this._select("Cover layout", this.config.cover_art_layout === "left" ? "left" : "center", [
+              { value: "center", label: "Cover center" },
+              { value: "left", label: "Cover left" },
+            ])}
             ${this._input("Cover art attribute", this.config.cover_art_attribute || "entity_picture", "entity_picture")}
           </div>
         </details>
@@ -1970,6 +2094,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     });
 
     const optionInputs = this.shadowRoot.querySelectorAll(".options-details input");
+    const optionSelects = this.shadowRoot.querySelectorAll(".options-details select");
     optionInputs[0]?.addEventListener("change", (ev) => {
       this._optionsOpen = true;
       this._setValue("show_volume", ev.target.checked ? undefined : false);
@@ -1985,6 +2110,10 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     optionInputs[3]?.addEventListener("change", (ev) => {
       this._optionsOpen = true;
       this._setValue("cover_art_attribute", ev.target.value.trim() || undefined);
+    });
+    optionSelects[0]?.addEventListener("change", (ev) => {
+      this._optionsOpen = true;
+      this._setValue("cover_art_layout", ev.target.value === "left" ? "left" : undefined);
     });
 
     this.shadowRoot.querySelector(".players-details")?.addEventListener("toggle", (ev) => {

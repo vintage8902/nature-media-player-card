@@ -101,6 +101,7 @@ type: custom:nature-media-player-card
 show_volume: false
 show_shuffle_repeat: true
 show_cover_art: true
+cover_art_layout: left
 cover_art_attribute: entity_picture
 music_assistant_config_entry_id: 01KQGB3DHD2S9Q2YAPJCWSTCYX
 spotify_entity: media_player.spotify
@@ -132,6 +133,9 @@ through shuffle, repeat, shuffle + repeat, and off.
 cover art between the title/artist and the controls. `cover_art_attribute`
 defaults to `entity_picture`, but can be changed if your media player exposes
 artwork through another attribute.
+
+`cover_art_layout` is optional and defaults to `center`. Set it to `left` to
+show cover art on the left with playback controls and volume on the right.
 
 ## Playlists
 <p align="center">
