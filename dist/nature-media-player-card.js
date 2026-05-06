@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.53";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.54";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -508,10 +508,11 @@ class NatureMediaPlayerCard extends HTMLElement {
     const choiceRows = Math.max(1, Math.ceil((panelItems.length || 1) / choiceColumns));
     const choiceRowHeight = playlistPanel ? 92 : 76;
     const choicesBaseHeight = playlistPanel ? 122 : 106;
+    const playlistTitleHeight = playlistPanel ? 28 : 0;
     const extraChoiceHeight = Math.max(0, choiceRows - 1) * (choiceRowHeight + 6);
     const coverArtHeight = showCoverArt && !coverArtLeft ? 172 : 0;
     const controlHeight = coverArtLeft ? (showVolume ? 232 : 190) : (showVolume ? 195 : 154) + coverArtHeight;
-    const cardHeight = this._panel === "controls" ? controlHeight : 89 + choicesBaseHeight + extraChoiceHeight;
+    const cardHeight = this._panel === "controls" ? controlHeight : 89 + playlistTitleHeight + choicesBaseHeight + extraChoiceHeight;
     const choicesHeight = choicesBaseHeight + extraChoiceHeight;
     const colors = {
       surface: "rgba(60, 94, 74, 0.72)",
@@ -1007,6 +1008,24 @@ class NatureMediaPlayerCard extends HTMLElement {
           gap: 6px;
         }
 
+        .playlist-panel-title {
+          height: ${playlistTitleHeight}px;
+          padding: 2px 76px 0;
+          box-sizing: border-box;
+          color: var(--nmp-text);
+          font-size: 13px;
+          font-weight: 800;
+          line-height: 18px;
+          text-align: center;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .playlist-panel .choices {
+          padding-top: 6px;
+        }
+
         .choice {
           border: 0;
           background: transparent;
@@ -1106,9 +1125,19 @@ class NatureMediaPlayerCard extends HTMLElement {
           this._panel === "players"
             ? `<div class="choices">${choices}</div>`
             : this._panel === "playlists"
-              ? `<div class="choices">${playlistChoices}</div>`
+              ? `
+                <div class="playlist-panel">
+                  <div class="playlist-panel-title">Music Assistant</div>
+                  <div class="choices">${playlistChoices}</div>
+                </div>
+              `
             : this._panel === "spotify-playlists"
-                ? `<div class="choices">${spotifyPlaylistChoices}</div>`
+                ? `
+                  <div class="playlist-panel">
+                    <div class="playlist-panel-title">Spotify</div>
+                    <div class="choices">${spotifyPlaylistChoices}</div>
+                  </div>
+                `
             : `
               ${
                 coverArtLeft
