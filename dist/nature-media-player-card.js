@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.54";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.55";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -834,8 +834,9 @@ class NatureMediaPlayerCard extends HTMLElement {
         .cover-left-layout .cover-art img {
           width: 100%;
           max-width: 150px;
-          max-height: ${showVolume ? "150px" : "118px"};
+          max-height: ${showVolume ? "142px" : "110px"};
           aspect-ratio: 1;
+          margin-bottom: 8px;
           object-fit: cover;
         }
 
