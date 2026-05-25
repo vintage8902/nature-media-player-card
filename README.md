@@ -28,6 +28,9 @@ source icon.
 - Visual Lovelace editor
 - Custom icons, names and colors
 
+## Credits
+
+Special thanks to Big-Xan for collaboration and feedback on the card.
 
 ## Install With HACS
 
