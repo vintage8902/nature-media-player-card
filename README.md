@@ -3,7 +3,7 @@
 A compact, nature-inspired Lovelace custom card for Home Assistant media
 players. It lets you collect multiple media players in one card, automatically
 follow the latest active player, and quickly switch between players with the
-three-dot button.
+source icon.
 
 ## Preview
 
@@ -86,7 +86,7 @@ players:
     icon: mdi:apple
 ```
 
-Tap the three-dot button on the card to manually choose a player. Starting
+Tap the source icon on the card to manually choose a player. Starting
 playback or changing track on another configured player will automatically move
 the card to that player. Active players are marked in the player picker.
 
@@ -102,6 +102,7 @@ show_volume: false
 show_shuffle_repeat: true
 show_cover_art: true
 cover_art_layout: left
+cover_art_height: 172
 cover_art_attribute: entity_picture
 music_assistant_config_entry_id: 01KQGB3DHD2S9Q2YAPJCWSTCYX
 spotify_entity: media_player.spotify
@@ -136,6 +137,8 @@ artwork through another attribute.
 
 `cover_art_layout` is optional and defaults to `center`. Set it to `left` to
 show cover art on the left with playback controls and volume on the right.
+When `cover_art_layout` is `center`, `cover_art_height` can be set from YAML or
+the visual editor to adjust the artwork area height.
 
 ## Playlists
 <p align="center">
@@ -148,7 +151,7 @@ show cover art on the left with playback controls and volume on the right.
 
 `playlists` is optional and intended for Music Assistant players. Enable
 playlists per player with `show_playlists: true`. When the active player has
-playlists enabled, a playlist icon appears next to the three-dot player picker.
+playlists enabled, a playlist icon appears next to the source-icon player picker.
 Tap it to open a playlist picker using the same compact round-button style as
 the player picker. Playlist choices call `music_assistant.play_media` on the
 active player.
@@ -176,7 +179,7 @@ automatically.
 ## Colors
 
 The default colors match the nature-inspired green/cream style, but every main
-color can be adjusted from YAML:
+color can be adjusted from YAML or with the visual editor color pickers:
 
 ```yaml
 type: custom:nature-media-player-card

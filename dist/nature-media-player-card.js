@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.55";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.56";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -29,6 +29,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       show_volume: true,
       show_cover_art: false,
       cover_art_layout: "center",
+      cover_art_height: undefined,
       show_shuffle_repeat: false,
       cover_art_attribute: "entity_picture",
       spotify_entity: "",
@@ -459,6 +460,12 @@ class NatureMediaPlayerCard extends HTMLElement {
       .replaceAll('"', "&quot;");
   }
 
+  _getCoverArtHeight() {
+    const configuredHeight = Number(this.config.cover_art_height);
+    if (!Number.isFinite(configuredHeight)) return 172;
+    return Math.max(96, Math.min(360, configuredHeight));
+  }
+
   _render() {
     if (!this.shadowRoot || !this._hass || !this.config) return;
 
@@ -510,7 +517,9 @@ class NatureMediaPlayerCard extends HTMLElement {
     const choicesBaseHeight = playlistPanel ? 122 : 106;
     const playlistTitleHeight = playlistPanel ? 28 : 0;
     const extraChoiceHeight = Math.max(0, choiceRows - 1) * (choiceRowHeight + 6);
-    const coverArtHeight = showCoverArt && !coverArtLeft ? 172 : 0;
+    const centerCoverArtHeight = this._getCoverArtHeight();
+    const centerCoverImageHeight = Math.max(72, centerCoverArtHeight - 12);
+    const coverArtHeight = showCoverArt && !coverArtLeft ? centerCoverArtHeight : 0;
     const controlHeight = coverArtLeft ? (showVolume ? 232 : 190) : (showVolume ? 195 : 154) + coverArtHeight;
     const cardHeight = this._panel === "controls" ? controlHeight : 89 + playlistTitleHeight + choicesBaseHeight + extraChoiceHeight;
     const choicesHeight = choicesBaseHeight + extraChoiceHeight;
@@ -658,7 +667,7 @@ class NatureMediaPlayerCard extends HTMLElement {
         .header {
           position: relative;
           height: 62px;
-          padding: 18px ${showPlaylistToggle ? "92px" : "76px"} 8px 76px;
+          padding: 18px 76px 8px;
           box-sizing: border-box;
           text-align: center;
           width: 100%;
@@ -673,12 +682,15 @@ class NatureMediaPlayerCard extends HTMLElement {
           top: 18px;
           width: 43px;
           height: 43px;
+          border: 0;
+          padding: 0;
           border-radius: 50%;
           color: var(--nmp-text);
           background: var(--nmp-icon-background);
           display: flex;
           align-items: center;
           justify-content: center;
+          cursor: pointer;
         }
 
         .source ha-icon {
@@ -686,27 +698,9 @@ class NatureMediaPlayerCard extends HTMLElement {
           height: 23px;
         }
 
-        .menu {
-          position: absolute;
-          right: 14px;
-          top: 14px;
-          width: 32px;
-          height: 32px;
-          border: 0;
-          padding: 0;
-          background: transparent;
-          color: var(--nmp-text);
-          cursor: pointer;
-        }
-
-        .menu ha-icon {
-          width: 22px;
-          height: 22px;
-        }
-
         .playlist-toggle {
           position: absolute;
-          right: 46px;
+          right: 18px;
           top: 14px;
           width: 32px;
           height: 32px;
@@ -797,7 +791,7 @@ class NatureMediaPlayerCard extends HTMLElement {
         }
 
         .cover-art {
-          height: 172px;
+          height: ${centerCoverArtHeight}px;
           padding: 0 18px 12px;
           box-sizing: border-box;
           display: flex;
@@ -809,7 +803,7 @@ class NatureMediaPlayerCard extends HTMLElement {
           width: auto;
           height: auto;
           max-width: 100%;
-          max-height: 160px;
+          max-height: ${centerCoverImageHeight}px;
           display: block;
           object-fit: contain;
           border-radius: 12px;
@@ -1115,9 +1109,8 @@ class NatureMediaPlayerCard extends HTMLElement {
 
       <ha-card>
         <div class="header">
-          <div class="source"><ha-icon icon="${data.icon}"></ha-icon></div>
+          <button class="source" aria-label="Velg mediaspiller"><ha-icon icon="${data.icon}"></ha-icon></button>
           ${showPlaylistToggle ? `<button class="playlist-toggle" aria-label="Velg spilleliste"><ha-icon icon="mdi:playlist-music"></ha-icon></button>` : ""}
-          <button class="menu" aria-label="Velg mediaspiller"><ha-icon icon="mdi:dots-horizontal"></ha-icon></button>
           <div class="title${titleIsLong ? " scrolling" : ""}"><span>${this._escape(data.title)}</span></div>
           <div class="artist">${this._escape(data.artist)}</div>
         </div>
@@ -1162,7 +1155,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       </ha-card>
     `;
 
-    this.shadowRoot.querySelector(".menu")?.addEventListener("click", (ev) => {
+    this.shadowRoot.querySelector(".source")?.addEventListener("click", (ev) => {
       ev.stopPropagation();
       this._panel = this._panel === "players" ? "controls" : "players";
       this._render();
@@ -1275,6 +1268,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       show_volume: true,
       show_cover_art: false,
       cover_art_layout: "center",
+      cover_art_height: undefined,
       show_shuffle_repeat: false,
       cover_art_attribute: "entity_picture",
       spotify_entity: "",
@@ -1535,6 +1529,48 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           value="${this._escape(value || "")}"
           label="${this._escape(label)}"
         ></ha-icon-picker>
+      </label>
+    `;
+  }
+
+  _numberInput(label, value, placeholder, min, max, step = 1) {
+    return `
+      <label>
+        <span>${label}</span>
+        <input
+          type="number"
+          value="${value ?? ""}"
+          placeholder="${this._escape(placeholder || "")}"
+          min="${min}"
+          max="${max}"
+          step="${step}"
+        >
+      </label>
+    `;
+  }
+
+  _isPickerColor(value) {
+    return /^#[0-9a-f]{6}$/i.test(String(value || ""));
+  }
+
+  _colorInput(key, label, value, placeholder) {
+    const colorValue = this._isPickerColor(value) ? value : placeholder || "#A8C49A";
+    return `
+      <label class="color-field" data-color-key="${this._escape(key)}">
+        <span>${label}</span>
+        <div class="color-row">
+          <input
+            class="color-text"
+            value="${this._escape(value || "")}"
+            placeholder="${this._escape(placeholder || "")}"
+          >
+          <input
+            class="color-picker"
+            type="color"
+            value="${this._escape(colorValue)}"
+            aria-label="${this._escape(label)} color picker"
+          >
+        </div>
       </label>
     `;
   }
@@ -1982,6 +2018,19 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           gap: 10px;
           margin-top: 12px;
         }
+
+        .color-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 56px;
+          gap: 8px;
+          align-items: end;
+        }
+
+        .color-picker {
+          min-height: 56px;
+          padding: 6px;
+          cursor: pointer;
+        }
       </style>
 
       <div class="editor">
@@ -2101,6 +2150,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
               { value: "center", label: "Cover center" },
               { value: "left", label: "Cover left" },
             ])}
+            ${this._numberInput("Cover center height", this.config.cover_art_height, "172", 96, 360)}
             ${this._input("Cover art attribute", this.config.cover_art_attribute || "entity_picture", "entity_picture")}
           </div>
         </details>
@@ -2109,7 +2159,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           <summary>Colors</summary>
           <div class="colors">
             ${colorFields
-              .map(([key, label]) => this._input(label, colors[key], key === "accent" ? "#A8C49A" : ""))
+              .map(([key, label]) => this._colorInput(key, label, colors[key], key === "accent" ? "#A8C49A" : ""))
               .join("")}
           </div>
         </details>
@@ -2138,6 +2188,11 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
       this._setValue("show_cover_art", ev.target.checked ? true : undefined);
     });
     optionInputs[3]?.addEventListener("change", (ev) => {
+      this._optionsOpen = true;
+      const height = Number(ev.target.value);
+      this._setValue("cover_art_height", Number.isFinite(height) ? Math.max(96, Math.min(360, height)) : undefined);
+    });
+    optionInputs[4]?.addEventListener("change", (ev) => {
       this._optionsOpen = true;
       this._setValue("cover_art_attribute", ev.target.value.trim() || undefined);
     });
@@ -2296,8 +2351,10 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     this.shadowRoot.querySelector(".add-spotify-playlist")?.addEventListener("click", () => this._addSpotifyPlaylist());
     this.shadowRoot.querySelector(".load-playlists")?.addEventListener("click", () => this._loadMusicAssistantPlaylists());
 
-    this.shadowRoot.querySelectorAll(".colors input").forEach((input, index) => {
-      input.addEventListener("change", (ev) => this._setColor(colorFields[index][0], ev.target.value.trim()));
+    this.shadowRoot.querySelectorAll(".color-field").forEach((field) => {
+      const key = field.dataset.colorKey;
+      field.querySelector(".color-text")?.addEventListener("change", (ev) => this._setColor(key, ev.target.value.trim()));
+      field.querySelector(".color-picker")?.addEventListener("input", (ev) => this._setColor(key, ev.target.value.trim()));
     });
   }
 }
