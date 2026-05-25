@@ -23,7 +23,7 @@ source icon.
 - Optional Music Assistant playlist picker
 - Optional Spotify playlist picker
 - Volume slider with mute/unmute support
-- Optional Shuffle/Repeat control
+- Optional independent Shuffle and Repeat controls
 - Optional cover art between track info and controls
 - Visual Lovelace editor
 - Custom icons, names and colors
@@ -95,7 +95,8 @@ the card to that player. Active players are marked in the player picker.
 
 The card also includes a visual Lovelace editor for the common options:
 players, optional names, searchable media players and icons, empty title, volume
-visibility, Shuffle/Repeat, optional cover art, playlists, and colors.
+visibility, independent Shuffle/Repeat controls, optional cover art, playlists,
+and colors.
 
 ## Options
 
@@ -130,8 +131,9 @@ to hide the volume slider and use a shorter compact control layout. When volume
 is shown, tap the volume icon to mute or unmute the active player.
 
 `show_shuffle_repeat` is optional and defaults to `false`. Set it to `true` to
-show a Shuffle/Repeat button next to the playback controls. Each tap cycles
-through shuffle, repeat, shuffle + repeat, and off.
+show independent Shuffle and Repeat buttons around the playback controls.
+Shuffle toggles on/off. Repeat cycles `off` -> `all` -> `one` -> `off` and uses
+distinct `mdi:repeat-off`, `mdi:repeat`, and `mdi:repeat-once` icons.
 
 `show_cover_art` is optional and defaults to `false`. Set it to `true` to show
 cover art between the title/artist and the controls. `cover_art_attribute`

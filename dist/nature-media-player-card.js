@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.56";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.57";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -39,7 +39,8 @@ class NatureMediaPlayerCard extends HTMLElement {
       spotify_playlists: Array.isArray(config.spotify_playlists) ? config.spotify_playlists : [],
     };
     this._panel = "controls";
-    this._shuffleRepeatMode = null;
+    this._shuffleOverride = null;
+    this._repeatOverride = null;
     this.attachShadow({ mode: "open" });
     this._render();
   }
@@ -227,31 +228,38 @@ class NatureMediaPlayerCard extends HTMLElement {
   }
 
   _isRepeatOn(repeat) {
-    return !["off", "none", "false", ""].includes(String(repeat || "").toLowerCase());
+    return this._normalizeRepeat(repeat) !== "off";
   }
 
   _isShuffleOn(shuffle) {
     return ["true", "on", "yes", "1"].includes(String(shuffle ?? false).toLowerCase());
   }
 
-  _getShuffleRepeatMode(data) {
-    const shuffle = data.shuffle === true;
-    const repeat = this._isRepeatOn(data.repeat);
-    if (shuffle && repeat) return "both";
-    if (repeat) return "repeat";
-    if (shuffle) return "shuffle";
+  _normalizeRepeat(repeat) {
+    const value = String(repeat || "").toLowerCase();
+    if (value === "one" || value === "track") return "one";
+    if (value === "all" || value === "context" || value === "on" || value === "true") return "all";
     return "off";
   }
 
-  _getDesiredShuffleRepeatMode(data) {
-    return this._shuffleRepeatMode || this._getShuffleRepeatMode(data);
+  _getDesiredShuffle(data) {
+    return this._shuffleOverride ?? data.shuffle === true;
   }
 
-  _getShuffleRepeatSettings(mode) {
-    return {
-      shuffle: mode === "shuffle" || mode === "both",
-      repeat: mode === "repeat" || mode === "both" ? "all" : "off",
-    };
+  _getDesiredRepeat(data) {
+    return this._repeatOverride ?? this._normalizeRepeat(data.repeat);
+  }
+
+  _getNextRepeat(repeat) {
+    if (repeat === "off") return "all";
+    if (repeat === "all") return "one";
+    return "off";
+  }
+
+  _getRepeatIcon(repeat) {
+    if (repeat === "one") return "mdi:repeat-once";
+    if (repeat === "all") return "mdi:repeat";
+    return "mdi:repeat-off";
   }
 
   _getSpotifyPlusRepeatState(repeat) {
@@ -260,7 +268,7 @@ class NatureMediaPlayerCard extends HTMLElement {
     return "off";
   }
 
-  async _callSpotifyPlusShuffleRepeat(entityId, deviceId, shuffle, repeat) {
+  async _callSpotifyPlusShuffle(entityId, deviceId, shuffle) {
     if (!entityId) return;
 
     const shuffleData = {
@@ -268,6 +276,17 @@ class NatureMediaPlayerCard extends HTMLElement {
       state: shuffle,
       delay: 0.5,
     };
+
+    if (deviceId) {
+      shuffleData.device_id = deviceId;
+    }
+
+    await this._hass.callService("spotifyplus", "player_set_shuffle_mode", shuffleData);
+  }
+
+  async _callSpotifyPlusRepeat(entityId, deviceId, repeat) {
+    if (!entityId) return;
+
     const repeatData = {
       entity_id: entityId,
       state: this._getSpotifyPlusRepeatState(repeat),
@@ -275,13 +294,16 @@ class NatureMediaPlayerCard extends HTMLElement {
     };
 
     if (deviceId) {
-      shuffleData.device_id = deviceId;
       repeatData.device_id = deviceId;
     }
 
     await this._hass.callService("spotifyplus", "player_set_repeat_mode", repeatData);
+  }
+
+  async _callSpotifyPlusShuffleRepeat(entityId, deviceId, shuffle, repeat) {
+    await this._callSpotifyPlusRepeat(entityId, deviceId, repeat);
     await new Promise((resolve) => setTimeout(resolve, 150));
-    await this._hass.callService("spotifyplus", "player_set_shuffle_mode", shuffleData);
+    await this._callSpotifyPlusShuffle(entityId, deviceId, shuffle);
   }
 
   async _transferSpotifyPlayback(entityId, deviceId) {
@@ -296,41 +318,58 @@ class NatureMediaPlayerCard extends HTMLElement {
     });
   }
 
-  _getNextShuffleRepeatMode(mode) {
-    if (mode === "off") return "shuffle";
-    if (mode === "shuffle") return "repeat";
-    if (mode === "repeat") return "both";
-    return "off";
-  }
-
-  _getShuffleRepeatIcon(mode) {
-    if (mode === "both") return "mdi:all-inclusive";
-    if (mode === "repeat") return "mdi:repeat";
-    if (mode === "shuffle") return "mdi:shuffle";
-    return "mdi:shuffle-disabled";
-  }
-
-  async _cycleShuffleRepeat(data) {
+  async _toggleShuffle(data) {
     const entityId = this._getActiveEntityId();
     if (!entityId) return;
 
-    const nextMode = this._getNextShuffleRepeatMode(this._getDesiredShuffleRepeatMode(data));
-    const { shuffle, repeat } = this._getShuffleRepeatSettings(nextMode);
-    this._shuffleRepeatMode = nextMode;
+    const shuffle = !this._getDesiredShuffle(data);
+    this._shuffleOverride = shuffle;
 
     const activePlayer = this._getConfiguredPlayer(entityId);
     const sourceName = activePlayer.spotify_source_name || activePlayer.source_name;
     const spotifyEntityId = this.config.spotify_entity || this.config.spotify_player_entity;
 
     if (spotifyEntityId && sourceName) {
-      await this._callSpotifyPlusShuffleRepeat(spotifyEntityId, sourceName, shuffle, repeat);
+      await this._callSpotifyPlusShuffle(spotifyEntityId, sourceName, shuffle);
     } else {
-      await this._hass.callService("media_player", "repeat_set", { repeat }, { entity_id: entityId });
-      await new Promise((resolve) => setTimeout(resolve, 150));
       await this._hass.callService("media_player", "shuffle_set", { shuffle }, { entity_id: entityId });
     }
 
     this._render();
+  }
+
+  async _cycleRepeat(data) {
+    const entityId = this._getActiveEntityId();
+    if (!entityId) return;
+
+    const repeat = this._getNextRepeat(this._getDesiredRepeat(data));
+    this._repeatOverride = repeat;
+
+    const activePlayer = this._getConfiguredPlayer(entityId);
+    const sourceName = activePlayer.spotify_source_name || activePlayer.source_name;
+    const spotifyEntityId = this.config.spotify_entity || this.config.spotify_player_entity;
+
+    if (spotifyEntityId && sourceName) {
+      await this._callSpotifyPlusRepeat(spotifyEntityId, sourceName, repeat);
+    } else {
+      await this._hass.callService("media_player", "repeat_set", { repeat }, { entity_id: entityId });
+    }
+
+    this._render();
+  }
+
+  _getPlaylistShuffleRepeatSettings(displayData) {
+    if (this.config.show_shuffle_repeat === true) {
+      return {
+        shuffle: this._getDesiredShuffle(displayData),
+        repeat: this._getDesiredRepeat(displayData),
+      };
+    }
+
+    return {
+      shuffle: this.config.shuffle_playlists === true,
+      repeat: "off",
+    };
   }
 
   async _playMusicAssistantPlaylist(playlist) {
@@ -343,10 +382,7 @@ class NatureMediaPlayerCard extends HTMLElement {
       media_type: "playlist",
     };
     const displayData = this._getDisplayData();
-    const mode = this.config.show_shuffle_repeat === true
-      ? this._getDesiredShuffleRepeatMode(displayData)
-      : this.config.shuffle_playlists === true ? "shuffle" : "off";
-    const { shuffle, repeat } = this._getShuffleRepeatSettings(mode);
+    const { shuffle, repeat } = this._getPlaylistShuffleRepeatSettings(displayData);
 
     await this._hass.callService("media_player", "repeat_set", { repeat }, { entity_id: entityId });
     await new Promise((resolve) => setTimeout(resolve, 150));
@@ -378,10 +414,7 @@ class NatureMediaPlayerCard extends HTMLElement {
     const sourceName = activePlayer.spotify_source_name || activePlayer.source_name || activePlayer.name;
 
     const displayData = this._getDisplayData();
-    const mode = this.config.show_shuffle_repeat === true
-      ? this._getDesiredShuffleRepeatMode(displayData)
-      : this.config.shuffle_playlists === true ? "shuffle" : "off";
-    const { shuffle, repeat } = this._getShuffleRepeatSettings(mode);
+    const { shuffle, repeat } = this._getPlaylistShuffleRepeatSettings(displayData);
 
     await this._transferSpotifyPlayback(spotifyEntityId, sourceName);
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -502,8 +535,9 @@ class NatureMediaPlayerCard extends HTMLElement {
     }
     const volumePct = Math.round(Math.max(0, Math.min(1, data.volume)) * 100);
     const volumeIcon = data.muted ? "mdi:volume-off" : "mdi:volume-high";
-    const shuffleRepeatMode = this._getDesiredShuffleRepeatMode(data);
-    const shuffleRepeatIcon = this._getShuffleRepeatIcon(shuffleRepeatMode);
+    const shuffleOn = this._getDesiredShuffle(data);
+    const repeatMode = this._getDesiredRepeat(data);
+    const repeatIcon = this._getRepeatIcon(repeatMode);
     const titleIsLong = String(data.title || "").length > 40;
     const playlistPanel = this._panel === "playlists" || this._panel === "spotify-playlists";
     const panelItems = this._panel === "playlists"
@@ -587,12 +621,17 @@ class NatureMediaPlayerCard extends HTMLElement {
       .join("");
     const controlsMarkup = `
       <div class="controls">
+        ${
+          showShuffleRepeat
+            ? `<button class="control shuffle ${shuffleOn ? "active" : ""}" aria-label="Shuffle"><ha-icon icon="mdi:shuffle"></ha-icon></button>`
+            : ""
+        }
         <button class="control previous" aria-label="Forrige"><ha-icon icon="mdi:skip-previous"></ha-icon></button>
         <button class="control play" aria-label="Spill av eller pause"><ha-icon icon="${playing ? "mdi:pause" : "mdi:play"}"></ha-icon></button>
         <button class="control next" aria-label="Neste"><ha-icon icon="mdi:skip-next"></ha-icon></button>
         ${
           showShuffleRepeat
-            ? `<button class="control shuffle-repeat ${shuffleRepeatMode === "off" ? "" : "active"}" aria-label="Shuffle og repeat"><ha-icon icon="${shuffleRepeatIcon}"></ha-icon></button>`
+            ? `<button class="control repeat ${repeatMode === "off" ? "" : "active"}" aria-label="Repeat"><ha-icon icon="${repeatIcon}"></ha-icon></button>`
             : ""
         }
       </div>
@@ -842,8 +881,8 @@ class NatureMediaPlayerCard extends HTMLElement {
 
         .cover-left-actions .controls {
           height: 66px;
-          grid-template-columns: 36px 54px 36px;
-          column-gap: 14px;
+          grid-template-columns: ${showShuffleRepeat ? "32px 32px 52px 32px 32px" : "36px 54px 36px"};
+          column-gap: ${showShuffleRepeat ? "6px" : "14px"};
           justify-content: center;
         }
 
@@ -855,17 +894,6 @@ class NatureMediaPlayerCard extends HTMLElement {
         .cover-left-actions .play {
           width: 54px;
           height: 54px;
-        }
-
-        .cover-left-actions .shuffle-repeat {
-          position: static;
-          grid-column: 4;
-          transform: none;
-        }
-
-        .cover-left-actions .controls:has(.shuffle-repeat) {
-          grid-template-columns: 34px 52px 34px 34px;
-          column-gap: 8px;
         }
 
         .cover-left-actions .volume {
@@ -882,13 +910,8 @@ class NatureMediaPlayerCard extends HTMLElement {
           }
 
           .cover-left-actions .controls {
-            grid-template-columns: 32px 48px 32px;
-            column-gap: 8px;
-          }
-
-          .cover-left-actions .controls:has(.shuffle-repeat) {
-            grid-template-columns: 30px 46px 30px 30px;
-            column-gap: 4px;
+            grid-template-columns: ${showShuffleRepeat ? "28px 28px 46px 28px 28px" : "32px 48px 32px"};
+            column-gap: ${showShuffleRepeat ? "4px" : "8px"};
           }
         }
 
@@ -896,10 +919,10 @@ class NatureMediaPlayerCard extends HTMLElement {
           height: 66px;
           position: relative;
           display: grid;
-          grid-template-columns: 40px 56px 40px;
+          grid-template-columns: ${showShuffleRepeat ? "40px 40px 56px 40px 40px" : "40px 56px 40px"};
           align-items: center;
           justify-content: center;
-          column-gap: 24px;
+          column-gap: ${showShuffleRepeat ? "14px" : "24px"};
         }
 
         .control {
@@ -920,26 +943,28 @@ class NatureMediaPlayerCard extends HTMLElement {
           height: 23px;
         }
 
-        .previous {
+        .shuffle {
           grid-column: 1;
         }
 
+        .previous {
+          grid-column: ${showShuffleRepeat ? "2" : "1"};
+        }
+
         .play {
-          grid-column: 2;
+          grid-column: ${showShuffleRepeat ? "3" : "2"};
         }
 
         .next {
-          grid-column: 3;
+          grid-column: ${showShuffleRepeat ? "4" : "3"};
         }
 
-        .shuffle-repeat {
-          position: absolute;
-          left: calc(50% + 116px);
-          top: 50%;
-          transform: translateY(-50%);
+        .repeat {
+          grid-column: 5;
         }
 
-        .shuffle-repeat.active {
+        .shuffle.active,
+        .repeat.active {
           color: var(--nmp-active-text);
           background: var(--nmp-icon-background);
         }
@@ -1182,9 +1207,14 @@ class NatureMediaPlayerCard extends HTMLElement {
       this._callMediaService("media_next_track");
     });
 
-    this.shadowRoot.querySelector(".shuffle-repeat")?.addEventListener("click", (ev) => {
+    this.shadowRoot.querySelector(".shuffle")?.addEventListener("click", (ev) => {
       ev.stopPropagation();
-      this._cycleShuffleRepeat(data);
+      this._toggleShuffle(data);
+    });
+
+    this.shadowRoot.querySelector(".repeat")?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      this._cycleRepeat(data);
     });
 
     this.shadowRoot.querySelector(".volume-slider")?.addEventListener("change", (ev) => {
