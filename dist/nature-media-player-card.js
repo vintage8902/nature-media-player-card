@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.57";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.58";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -876,11 +876,14 @@ class NatureMediaPlayerCard extends HTMLElement {
         .cover-left-actions {
           display: grid;
           gap: 12px;
+          justify-items: center;
           min-width: 0;
         }
 
         .cover-left-actions .controls {
           height: 66px;
+          width: max-content;
+          max-width: 100%;
           grid-template-columns: ${showShuffleRepeat ? "32px 32px 52px 32px 32px" : "36px 54px 36px"};
           column-gap: ${showShuffleRepeat ? "6px" : "14px"};
           justify-content: center;
@@ -898,6 +901,7 @@ class NatureMediaPlayerCard extends HTMLElement {
 
         .cover-left-actions .volume {
           height: 40px;
+          width: min(100%, 360px);
           padding: 0;
         }
 
