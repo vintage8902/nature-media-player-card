@@ -1,4 +1,4 @@
-const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.58";
+const NATURE_MEDIA_PLAYER_CARD_VERSION = "0.4.59";
 
 console.info(
   `%c NATURE-MEDIA-PLAYER-CARD %c v${NATURE_MEDIA_PLAYER_CARD_VERSION} `,
@@ -1284,6 +1284,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
     this._playlistsOpen = false;
     this._spotifyPlaylistsOpen = false;
     this._optionsOpen = false;
+    this._colorsOpen = false;
     this.attachShadow({ mode: "open" });
   }
 
@@ -1362,6 +1363,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
   }
 
   _setColor(key, value) {
+    this._colorsOpen = true;
     const colors = { ...(this.config.colors || {}) };
     if (value === "" || value === null || value === undefined) {
       delete colors[key];
@@ -2189,7 +2191,7 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
           </div>
         </details>
 
-        <details>
+        <details class="colors-details" ${this._colorsOpen ? "open" : ""}>
           <summary>Colors</summary>
           <div class="colors">
             ${colorFields
@@ -2245,6 +2247,10 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
     this.shadowRoot.querySelector(".spotify-playlists-details")?.addEventListener("toggle", (ev) => {
       this._spotifyPlaylistsOpen = ev.currentTarget.open;
+    });
+
+    this.shadowRoot.querySelector(".colors-details")?.addEventListener("toggle", (ev) => {
+      this._colorsOpen = ev.currentTarget.open;
     });
 
     this.shadowRoot.querySelector(".playlists-details .ma-config-entry")?.addEventListener("change", (ev) => {
@@ -2387,8 +2393,14 @@ class NatureMediaPlayerCardEditor extends HTMLElement {
 
     this.shadowRoot.querySelectorAll(".color-field").forEach((field) => {
       const key = field.dataset.colorKey;
-      field.querySelector(".color-text")?.addEventListener("change", (ev) => this._setColor(key, ev.target.value.trim()));
-      field.querySelector(".color-picker")?.addEventListener("input", (ev) => this._setColor(key, ev.target.value.trim()));
+      field.querySelector(".color-text")?.addEventListener("change", (ev) => {
+        this._colorsOpen = true;
+        this._setColor(key, ev.target.value.trim());
+      });
+      field.querySelector(".color-picker")?.addEventListener("input", (ev) => {
+        this._colorsOpen = true;
+        this._setColor(key, ev.target.value.trim());
+      });
     });
   }
 }
