@@ -1,56 +1,102 @@
----
 name: Bug report
-about: Something isn't working as expected
+description: Something isn't working as expected
 title: "[BUG] "
-labels: bug
-assignees: ''
----
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: What is happening, and what did you expect to happen instead?
+    validations:
+      required: true
 
-## Describe the bug
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
 
-A clear description of what is happening and what you expected to happen instead.
+  - type: input
+    id: version
+    attributes:
+      label: Card version
+      description: Check the browser console or the card JS filename for the version number.
+      placeholder: "e.g. 0.4.68-dev"
+    validations:
+      required: true
 
-## Steps to reproduce
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant config
+      description: Paste your card YAML. Remove any sensitive values (entity IDs are fine).
+      render: yaml
+    validations:
+      required: true
 
-1. 
-2. 
-3. 
+  - type: input
+    id: player_type
+    attributes:
+      label: Player type
+      description: What media player(s) are involved?
+      placeholder: "e.g. Alexa Echo, Sonos, Apple TV, Music Assistant"
+    validations:
+      required: true
 
-## Card version
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "e.g. 2025.5.0"
+    validations:
+      required: true
 
-<!-- Check the browser console or the card JS filename for the version number -->
+  - type: input
+    id: spotifyplus_version
+    attributes:
+      label: SpotifyPlus version
+      description: Leave blank if not relevant.
+      placeholder: "e.g. 1.0.98"
 
-## Relevant config
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Chrome
+        - Firefox
+        - Safari
+        - Edge
+        - Other
+    validations:
+      required: true
 
-<!-- Paste your card YAML below. Remove any sensitive values (entity IDs are fine). -->
+  - type: dropdown
+    id: device
+    attributes:
+      label: Device type
+      options:
+        - Desktop
+        - Mobile
+        - Tablet
+    validations:
+      required: true
 
-```yaml
+  - type: textarea
+    id: console_errors
+    attributes:
+      label: Console errors
+      description: Open browser DevTools → Console, reproduce the issue, and paste any errors here.
+      render: shell
 
-```
-
-## Media player / integration details
-
-- Player type (e.g. Alexa Echo, Sonos, Apple TV, Music Assistant):
-- SpotifyPlus version (if relevant):
-- Home Assistant version:
-
-## Browser / device
-
-- Browser:
-- Device (desktop / mobile / tablet):
-
-## Console errors
-
-<!-- Open browser DevTools → Console, reproduce the issue, paste any errors here -->
-
-```
-
-```
-
-## Screenshots or screen recording
-
-<!-- If applicable, attach screenshots or a short recording to help explain the problem -->
-
-## Additional context
-
-<!-- Anything else that might be relevant — recent HA updates, custom themes, other cards installed, etc. -->
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Screenshots, screen recordings, recent HA updates, or anything else that might help.
