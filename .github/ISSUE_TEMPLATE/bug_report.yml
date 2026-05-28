@@ -27,7 +27,7 @@ body:
     attributes:
       label: Card version
       description: Check the browser console or the card JS filename for the version number.
-      placeholder: "e.g. 0.4.68-dev"
+      placeholder: "e.g. 0.4.68"
     validations:
       required: true
 
