@@ -1,1 +1,57 @@
+name: Feature request
+description: Suggest an idea or improvement for the card
+title: "[FEATURE] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A clear one or two sentence description of the feature you're requesting.
+    validations:
+      required: true
 
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem it solves
+      description: What limitation or friction does this address?
+      placeholder: "e.g. I use Alexa groups and currently have no way to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed behaviour
+      description: How would you expect the feature to work? Config keys, UI changes, and interaction details are all helpful.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you found any workarounds? Why aren't they sufficient?
+
+  - type: input
+    id: player_types
+    attributes:
+      label: Player types in use
+      placeholder: "e.g. Alexa Echo, Sonos, Music Assistant"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: integrations
+    attributes:
+      label: Integrations
+      options:
+        - label: SpotifyPlus
+        - label: Music Assistant
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Mockups, links to similar implementations in other cards, or anything else useful.
