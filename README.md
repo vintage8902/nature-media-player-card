@@ -393,7 +393,7 @@ buttons in the speaker panel.
 
 Replace the `[YOUR_SPOTIFY_PLAYLIST_*]` values with your own playlist IDs,
 URIs, or URLs. Local image paths like `/local/spotify/rap_gold.png` refer to
-images uploaded to your HA `/config/www/` directory — replace or remove them
+images uploaded to your HA `/config/www/` directory (Big-Xan created a folder named 'spotify' to organize the images in one place)— replace or remove them
 as needed.
 
 ```yaml
