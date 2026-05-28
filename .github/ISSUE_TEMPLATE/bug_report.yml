@@ -1,1 +1,56 @@
+---
+name: Bug report
+about: Something isn't working as expected
+title: "[BUG] "
+labels: bug
+assignees: ''
+---
 
+## Describe the bug
+
+A clear description of what is happening and what you expected to happen instead.
+
+## Steps to reproduce
+
+1. 
+2. 
+3. 
+
+## Card version
+
+<!-- Check the browser console or the card JS filename for the version number -->
+
+## Relevant config
+
+<!-- Paste your card YAML below. Remove any sensitive values (entity IDs are fine). -->
+
+```yaml
+
+```
+
+## Media player / integration details
+
+- Player type (e.g. Alexa Echo, Sonos, Apple TV, Music Assistant):
+- SpotifyPlus version (if relevant):
+- Home Assistant version:
+
+## Browser / device
+
+- Browser:
+- Device (desktop / mobile / tablet):
+
+## Console errors
+
+<!-- Open browser DevTools → Console, reproduce the issue, paste any errors here -->
+
+```
+
+```
+
+## Screenshots or screen recording
+
+<!-- If applicable, attach screenshots or a short recording to help explain the problem -->
+
+## Additional context
+
+<!-- Anything else that might be relevant — recent HA updates, custom themes, other cards installed, etc. -->
